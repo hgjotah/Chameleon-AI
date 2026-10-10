@@ -18,7 +18,6 @@ def attach_smoke(app: QApplication, window: SetupWindow, output: Path) -> None:
         window.grab().save(str(output / "frozen-setup.png"))
         settings = SettingsDialog(Config(), window)
         settings.show()
-        settings.grab().save(str(output / "frozen-settings.png"))
         ok = len(settings.fields) >= 16 and not window.ollama.isChecked()
         (output / "frozen-setup.json").write_text(
             json.dumps(
@@ -34,8 +33,11 @@ def attach_smoke(app: QApplication, window: SetupWindow, output: Path) -> None:
             ),
             encoding="utf-8",
         )
-        settings.close()
-        window.close()
-        app.exit(0 if ok else 1)
+        def finish() -> None:
+            settings.grab().save(str(output / "frozen-settings.png"))
+            settings.close()
+            window.close()
+            app.exit(0 if ok else 1)
+        QTimer.singleShot(400, finish)
 
     QTimer.singleShot(1500, inspect)

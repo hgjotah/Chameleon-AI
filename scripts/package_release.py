@@ -33,14 +33,14 @@ else:
             )
         source_files.append("installer/chameleon.spec")
     with zipfile.ZipFile(
-        dist / "ChameleonAI-0.1.0-source.zip", "w", zipfile.ZIP_DEFLATED
+        dist / "ChameleonAI-0.2.0-source.zip", "w", zipfile.ZIP_DEFLATED
     ) as archive:
         for name in source_files:
             path = root / name
             if path.is_file():
                 archive.write(path, name)
     with zipfile.ZipFile(
-        dist / "ChameleonAI-0.1.0-windows-x64.zip", "w", zipfile.ZIP_DEFLATED
+        dist / "ChameleonAI-0.2.0-windows-x64.zip", "w", zipfile.ZIP_DEFLATED
     ) as archive:
         for path in sorted((dist / "Chameleon").rglob("*")):
             if path.is_file():
@@ -57,11 +57,11 @@ else:
             archive.write(root / name, name)
         archive.writestr(
             "LEEME-PORTABLE.txt",
-            "Chameleon AI 0.1.0\n\nConserva la carpeta Chameleon completa.\nPara abrir el terminal: Chameleon\\ChameleonTerminal.exe\nPara instalar la integración CMD/PowerShell: Chameleon\\ChameleonSetup.exe\nSettings: Chameleon\\ChameleonSetup.exe settings\nOllama y qwen3:4b-instruct deben estar instalados para las consultas de IA.\nConsulta README.md y docs/INSTALLATION.md.\n",
+            "Chameleon AI 0.2.0\n\nConserva la carpeta Chameleon completa.\nPara abrir el terminal: Chameleon\\ChameleonTerminal.exe\nPara instalar la integración CMD/PowerShell: Chameleon\\ChameleonSetup.exe\nSettings: Chameleon\\ChameleonSetup.exe settings\nOllama y qwen3:4b-instruct deben estar instalados para las consultas de IA.\nConsulta README.md y docs/INSTALLATION.md.\n",
         )
-    sums = {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in dist.iterdir()
-        if path.is_file() and path.name != "SHA256SUMS.json"
-    }
+    sums = {}
+    for path in dist.iterdir():
+        if path.is_file() and path.name != "SHA256SUMS.json":
+            with path.open("rb") as stream:
+                sums[path.name] = hashlib.file_digest(stream, "sha256").hexdigest()
     (dist / "SHA256SUMS.json").write_text(json.dumps(sums, indent=2), encoding="utf-8")

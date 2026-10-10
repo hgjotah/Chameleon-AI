@@ -14,9 +14,15 @@ Restricted or AllSigned prevents loading the unsigned integration. Setup detects
 
 Existing Ollama is reused. If absent, Setup offers installation from the official HTTPS URL and checks Authenticode status and Ollama signer before running. Installation requires explicit consent. If automatic installation fails, use [Ollama for Windows](https://ollama.com/download/windows), then run Repair. Setup can start `ollama serve` without a visible console. Model download uses `/api/pull` progress; Ollama verifies content digests. Setup checks tags and performs a structured inference without executing its result.
 
+The inference probe generates only a minimal JSON response after verifying local model metadata. If model download/probing fails, Setup reports **terminal installed, AI pending** and offers retry through Repair. File creation, navigation and direct shell commands remain available. A cold CPU inference can still take tens of seconds; Ctrl+C cancels a GUI request, and Settings exposes the timeout.
+
 ## Repair / Update
 
 Close Chameleon Terminal and run the **standalone release Setup** again. It offers Open Chameleon, Repair, Update and Uninstall. Repair recopies the supplied payload, wrappers/module, missing profile loader, PATH and shortcuts; then verifies Ollama/model/API. Update applies the version bundled with the installer while preserving configuration. No remote update service is included. If files are locked, close installed processes and retry from the external installer.
+
+The installer stages the complete runtime, checks disk space and hashes, retains the old runtime until the manifest commits, and restores prior integration files/PATH/registration if that phase fails. A damaged profile block is detected before replacement. Repair from the installed application displays a responsive preparation window while relocating its loaded libraries.
+
+Child PowerShell processes rebuild their own edition's module path. This addresses the documented PowerShell 7 → Python → Windows PowerShell inheritance problem: [Microsoft PSModulePath documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-7.6).
 
 ## Uninstall
 

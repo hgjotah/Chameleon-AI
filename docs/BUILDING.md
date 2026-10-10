@@ -10,6 +10,8 @@ The script creates `.venv`, installs `requirements.lock`, installs this package 
 
 For iteration: `build.ps1 -SkipInstall`; `-SkipTests` should only be used after the checks have passed for the same source revision. `scripts/clean.ps1` checks absolute targets inside the repository before deleting only known build directories.
 
+`scripts/run.ps1 setup` launches the built standalone installer. Do not install from a source Python process supplied by Microsoft Store: its AppData/HKCU virtualization can put files and registration in a private location invisible to native shell processes ([Python's Windows documentation](https://docs.python.org/3.13/using/windows.html#redirection-of-local-data-registry-and-temporary-paths)). Store Python can still build and test the project; the frozen installer runs independently of it.
+
 Reproducibility fixes Python minor version, all pip packages and npm lockfile. PyInstaller timestamps/platform DLL metadata may differ, so byte-for-byte reproducibility is not claimed. `SHA256SUMS.json` identifies each produced distribution. For commercial release sign executables and installer using your certificate outside the repository. CI requires no signing secret.
 
 Verification:

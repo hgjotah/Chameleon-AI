@@ -200,6 +200,18 @@ def test_provider_invalid_fails(context: Context) -> None:
         asyncio.run(provider.plan("danger", context))
 
 
+def test_process_mutation_not_forced_into_readonly_grammar(context: Context) -> None:
+    def mock(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"model_info": {"general.architecture": "qwen3"}})
+        schema = json.loads(request.content)["format"]
+        kinds = {v["properties"]["kind"]["const"] for v in schema["$defs"]["Action"]["anyOf"]}
+        assert "command" in kinds
+        return httpx.Response(200, json={"message": {"content": Plan(intent="clarify", shell="cmd", summary="Indica el PID exacto.").model_dump_json()}})
+    plan = asyncio.run(OllamaProvider(Config().ai, httpx.MockTransport(mock)).plan("cierra los procesos que usan memoria", context))
+    assert plan.intent == "clarify" and not plan.actions
+
+
 def test_local_rules_work_offline(context: Context) -> None:
     config = Config()
     config.ai.enabled = False

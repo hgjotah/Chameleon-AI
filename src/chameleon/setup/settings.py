@@ -1,40 +1,81 @@
 import os
 import shutil
+from pathlib import Path
 
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QMessageBox,
-    QPushButton,
     QSpinBox,
-    QTabWidget,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from chameleon.core.config import Config, data_dir, save_config
+from chameleon.ui.widgets import BrandMark, MotionButton
 
 
 class SettingsDialog(QDialog):
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.config = config.model_copy(deep=True)
-        self.setWindowTitle("Chameleon Settings")
-        self.resize(560, 510)
+        self.setWindowTitle("Chameleon · Ajustes")
+        self.resize(850, 630)
+        self.setMinimumSize(760, 570)
         layout = QVBoxLayout(self)
-        tabs = QTabWidget()
-        layout.addWidget(tabs)
+        layout.setContentsMargins(26, 22, 26, 22)
+        layout.setSpacing(20)
+        header = QHBoxLayout()
+        header.addWidget(BrandMark())
+        heading = QLabel("Hazlo tuyo.")
+        heading.setObjectName("heading")
+        header.addWidget(heading)
+        header.addStretch()
+        badge = QLabel("AJUSTES LOCALES")
+        badge.setObjectName("badge")
+        header.addWidget(badge)
+        layout.addLayout(header)
+        content = QHBoxLayout()
+        content.setSpacing(22)
+        navigation = QListWidget()
+        navigation.setFixedWidth(158)
+        navigation.setStyleSheet("QListWidget{background:#101925;border:1px solid #293a50;border-radius:12px;padding:8px} QListWidget::item{padding:14px 9px;border-radius:7px;color:#9db1c8} QListWidget::item:selected{background:#244639;color:#a0f0ce} QListWidget::item:hover{background:#1b2c3e}")
+        tabs = QStackedWidget()
+        content.addWidget(navigation)
+        content.addWidget(tabs, 1)
+        layout.addLayout(content, 1)
+        fade = QGraphicsOpacityEffect(tabs)
+        tabs.setGraphicsEffect(fade)
+        self.page_animation = QPropertyAnimation(fade, b"opacity", self)
+        self.page_animation.setDuration(180)
+        self.page_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        def select_page(index: int) -> None:
+            tabs.setCurrentIndex(index)
+            self.page_animation.stop()
+            self.page_animation.setStartValue(0.45)
+            self.page_animation.setEndValue(1.0)
+            self.page_animation.start()
+        navigation.currentRowChanged.connect(select_page)
         self.fields: dict[tuple[str, str], QLineEdit | QComboBox | QSpinBox | QCheckBox] = {}
 
         def page(name: str) -> QFormLayout:
             widget = QWidget()
             form = QFormLayout(widget)
-            tabs.addTab(widget, name)
+            form.setContentsMargins(8, 12, 8, 12)
+            form.setVerticalSpacing(18)
+            form.setHorizontalSpacing(20)
+            form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+            tabs.addWidget(widget)
+            navigation.addItem(name)
             return form
 
         def field(
@@ -70,12 +111,12 @@ class SettingsDialog(QDialog):
         field(general, "terminal", "start_directory", "Directorio inicial")
         field(general, "general", "language", "Idioma", ["es", "en"])
         field(general, "general", "startup_checks", "Comprobar al iniciar")
-        ai = page("AI")
+        ai = page("IA local")
         ai.addRow("Proveedor", QLabel("Ollama · exclusivamente local"))
         field(ai, "ai", "model", "Modelo")
         field(ai, "ai", "keep_alive", "Mantener cargado (ej. 5m, 0)")
         field(ai, "ai", "timeout", "Timeout (segundos)", bounds=(5, 600))
-        field(ai, "ai", "enabled", "AI enabled")
+        field(ai, "ai", "enabled", "Activar IA")
         terminal = page("Terminal")
         field(terminal, "terminal", "font", "Fuente")
         field(terminal, "terminal", "font_size", "Tamaño", bounds=(8, 40))
@@ -83,28 +124,36 @@ class SettingsDialog(QDialog):
         field(terminal, "terminal", "cursor_blink", "Parpadeo")
         field(terminal, "terminal", "scrollback", "Scrollback", bounds=(100, 100000))
         field(terminal, "ai", "show_generated_commands", "Mostrar comandos generados")
-        safety = page("Safety")
+        safety = page("Seguridad")
         safety.addRow(
             QLabel(
                 "Confirmaciones obligatorias para cambios.\nLas acciones BLOCKED siempre permanecen bloqueadas."
             )
         )
         field(safety, "safety", "strict_mode", "Confirmar también consultas AI")
-        privacy = page("Privacy")
-        field(privacy, "privacy", "save_ai_history", "Save AI history (local)")
+        privacy = page("Privacidad")
+        field(privacy, "privacy", "save_ai_history", "Guardar historial de IA")
         privacy.addRow(QLabel("Redacción básica de secretos; no garantiza detectar todos."))
-        clear = QPushButton("Borrar historial local y sesiones")
+        clear = MotionButton("Borrar historial local y sesiones")
         clear.clicked.connect(self.clear_history)
         privacy.addRow(clear)
-        open_folder = QPushButton("Abrir carpeta de datos")
+        open_folder = MotionButton("Abrir carpeta de datos")
         open_folder.clicked.connect(self.open_data_folder)
         privacy.addRow(open_folder)
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer = QHBoxLayout()
+        note = QLabel("Los cambios de shell se aplican a nuevas sesiones.")
+        note.setObjectName("muted")
+        note.setStyleSheet("color:#8b9fb7;font-size:11px")
+        footer.addWidget(note, 1)
+        cancel = MotionButton("Cancelar")
+        cancel.clicked.connect(self.reject)
+        save = MotionButton("Guardar cambios", primary=True)
+        save.clicked.connect(self.save)
+        save.setDefault(True)
+        footer.addWidget(cancel)
+        footer.addWidget(save)
+        layout.addLayout(footer)
+        navigation.setCurrentRow(0)
 
     def open_data_folder(self) -> None:
         try:
@@ -142,7 +191,13 @@ class SettingsDialog(QDialog):
                     value = widget.text()
                 values[section][name] = value
             self.config = Config.model_validate(values)
+            folder = self.config.terminal.start_directory
+            if folder and not Path(folder).expanduser().is_dir():
+                raise ValueError("El directorio inicial debe ser una carpeta existente. Déjalo vacío para usar tu carpeta de usuario.")
+            from chameleon.platform.windows.system import shell_executable
+
+            shell_executable(self.config.terminal.shell)
             save_config(self.config)
             self.accept()
-        except ValueError as exc:
+        except (ValueError, OSError) as exc:
             QMessageBox.warning(self, "Configuración inválida", str(exc))

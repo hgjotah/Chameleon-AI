@@ -1,7 +1,9 @@
 import datetime
+import os
 import platform
 import re
 import shutil
+from itertools import islice
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -49,7 +51,8 @@ def build_context(cwd: Path, shell: ShellName, recent: list[str] | None = None) 
     adapter = WindowsPlatform()
     entries: list[str] = []
     try:
-        entries = sorted(p.name + ("/" if p.is_dir() else "") for p in cwd.iterdir())[:100]
+        with os.scandir(cwd) as directory:
+            entries = sorted(p.name + ("/" if p.is_dir() else "") for p in islice(directory, 100))
     except OSError:
         entries = []
     return Context(

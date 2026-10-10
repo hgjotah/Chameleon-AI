@@ -8,7 +8,7 @@ from typing import Any
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from chameleon.core.config import Config, data_dir
-from chameleon.core.context import build_context
+from chameleon.core.context import Context, build_context
 from chameleon.core.engine import Engine
 from chameleon.core.intents import is_real_command
 from chameleon.core.privacy import redact
@@ -27,12 +27,15 @@ class TerminalSession(QObject):
     failed = Signal(str)
     status = Signal(str)
     exited = Signal()
+    location = Signal(str)
 
     def __init__(self, config: Config, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.config = config
         self.root = data_dir()
         self.cwd = Path(config.terminal.start_directory or Path.home()).resolve()
+        if not self.cwd.is_dir():
+            self.cwd = Path.home()
         self.recent: list[str] = []
         self.tail = ""
         self.aliases: set[str] = set()
@@ -47,6 +50,7 @@ class TerminalSession(QObject):
         self._loop: asyncio.AbstractEventLoop | None = None
         self._task: asyncio.Task[Any] | None = None
         self.cancel_requested = threading.Event()
+        self._health_lock = threading.Lock()
         self._hidden_echo = ""
         self._suppress_echo = False
         state_dir = self.root / "runtime" / "terminal"
@@ -74,6 +78,11 @@ class TerminalSession(QObject):
         else:
             self.status.emit("AI ENABLED" if self.config.ai.enabled else "AI DISABLED")
 
+    def update_config(self, config: Config) -> None:
+        actual_shell = self.config.terminal.shell
+        self.config = config.model_copy(deep=True)
+        self.config.terminal.shell = actual_shell
+
     def _read(self) -> None:
         try:
             while not self.closed:
@@ -99,7 +108,8 @@ class TerminalSession(QObject):
                     self._suppress_echo = False
                 self.tail = (self.tail + chunk)[-4096:]
                 self.output.emit(chunk)
-        except (EOFError, OSError):
+        except Exception as exc:
+            logging.getLogger("chameleon").info("Shell reader ended: %s", type(exc).__name__)
             if not self.closed:
                 self.closed = True
                 self.exited.emit()
@@ -107,12 +117,17 @@ class TerminalSession(QObject):
     def prompt(self, token: str, cwd: str) -> bool:
         if token != self.token or self.closed:
             return False
+        if self.busy and self.pending_command is None:
+            # ConPTY may replay the window title on focus changes (e.g. a
+            # confirmation dialog). It is not a new editable shell prompt.
+            return False
         candidate = Path(cwd)
         # CMD also appends the running command to its window title. That is not
         # a prompt acknowledgement and must never enable AI inside a REPL.
         if not candidate.is_dir():
             return False
         self.cwd = candidate
+        self.location.emit(str(candidate))
         self.at_prompt = not self.raw_mode
         if self.pending_command is not None:
             command = self.pending_command
@@ -131,13 +146,16 @@ class TerminalSession(QObject):
         return self.pending_command is None and self.at_prompt
 
     def check_ai(self) -> None:
-        if self.busy or self.closed:
+        if self.busy or self.closed or not self._health_lock.acquire(blocking=False):
             return
-        if not self.config.ai.enabled:
-            self.status.emit("AI DISABLED")
-            return
-        online, model = asyncio.run(OllamaProvider(self.config.ai).status())
-        self.status.emit("AI LOCAL" if online and model else "AI OFFLINE")
+        try:
+            if not self.config.ai.enabled:
+                self.status.emit("AI DISABLED")
+                return
+            online, model = asyncio.run(OllamaProvider(self.config.ai).status())
+            self.status.emit("AI LOCAL" if online and model else "AI OFFLINE")
+        finally:
+            self._health_lock.release()
 
     def data(self, text: str) -> None:
         if self.closed:
@@ -153,11 +171,12 @@ class TerminalSession(QObject):
     def submit(self, line: str) -> None:
         if self.busy or self.closed:
             return
-        context = build_context(self.cwd, self.config.terminal.shell, self.recent)
+        context = Context(cwd=str(self.cwd), shell=self.config.terminal.shell)
         if self.raw_mode or not self.at_prompt or is_real_command(line, context, self.aliases):
             self.at_prompt = False
             self.backend.write("\r")
             return
+        context = build_context(self.cwd, self.config.terminal.shell, self.recent)
         self.busy = True
         self.cancel_requested.clear()
         self.last_request = line
@@ -196,6 +215,7 @@ class TerminalSession(QObject):
 
     def cancel(self) -> None:
         self.cancel_requested.set()
+        self.pending_command = None
         loop, task = self._loop, self._task
         if loop and task:
             try:
@@ -204,11 +224,15 @@ class TerminalSession(QObject):
                 logging.getLogger("chameleon").debug(
                     "Inference loop already closed during cancellation"
                 )
+        if self.busy and task is None and not self.closed:
+            self.reset_prompt()
 
     def reset_prompt(self) -> None:
         if self.closed:
             return
         self.busy = False
+        self.at_prompt = False
+        self.pending_command = None
         self.backend.write("\x03")
         threading.Thread(target=self.check_ai, daemon=True).start()
 
@@ -240,7 +264,13 @@ class TerminalSession(QObject):
         # Combining ESC with injected text can be decoded as an Alt key by ConPTY.
         self.pending_command = command
         self.backend.write("\x03")
+        QTimer.singleShot(5000, self._pending_timeout)
         threading.Thread(target=self.check_ai, daemon=True).start()
+
+    def _pending_timeout(self) -> None:
+        if self.pending_command is not None and not self.closed:
+            self.pending_command = None
+            self.failed.emit("El shell no respondió al cambio de línea. No se ejecutó la acción. Pulsa Ctrl+C y vuelve a intentarlo.")
 
     def close(self) -> None:
         self.closed = True

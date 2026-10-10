@@ -15,15 +15,27 @@ def query_command(action: Action, powershell: bool = False) -> str:
         command = quote(str(executable))
     else:
         command = quote(sys.executable) + " -m chameleon"
-    return ("& " if powershell else "") + command + " query --encoded " + encoded
+    operation = "apply" if action.kind in ("create", "mkdir", "copy", "move") else "query"
+    result = ("& " if powershell else "") + command + " " + operation + " --encoded " + encoded
+    if not powershell and len(result) > 7900:
+        raise ValueError("La acción supera la longitud máxima de CMD. Reduce el contenido o usa una sesión PowerShell.")
+    return result + ("; if ($LASTEXITCODE -ne 0) { throw 'Chameleon: no se pudo completar la acción' }" if powershell else "")
 
 
 def needs_query(action: Action) -> bool:
     return (
-        action.kind == "processes"
+        action.kind in ("processes", "create", "mkdir", "copy", "move")
         or action.kind in ("find", "list")
         and bool(action.min_size_bytes or action.modified_after or action.file_type != "any")
     )
+
+
+def describe_action(action: Action, cwd: Path, powershell: bool = False) -> str:
+    if action.kind in ("create", "mkdir", "copy", "move"):
+        names = {"create": "Crear archivo UTF-8 (sin sobrescribir)", "mkdir": "Crear carpeta", "copy": "Copiar archivo (sin sobrescribir)", "move": "Mover archivo (sin sobrescribir)"}
+        content = "".join(char if ord(char) >= 32 or char in "\n\t" else f"\\x{ord(char):02x}" for char in action.content)
+        return names[action.kind] + "\nRuta: " + action.path + ("\nDestino: " + action.destination if action.destination else "") + ("\nContenido:\n" + content if action.kind == "create" else "")
+    return (PowerShellAdapter() if powershell else CmdAdapter()).render(action, cwd)
 
 
 def cmd_quote(value: str, batch: bool = True) -> str:
@@ -75,7 +87,7 @@ class PowerShellAdapter(ShellAdapter):
         path = str((cwd / action.path).resolve()) if action.path else str(cwd)
         quoted = ps_quote(path)
         if action.kind == "cd":
-            return "Set-Location -LiteralPath " + quoted
+            return "Set-Location -LiteralPath " + quoted + " -ErrorAction Stop"
         if action.kind == "clear":
             return "Clear-Host"
         if action.kind in ("list", "find"):
@@ -85,11 +97,12 @@ class PowerShellAdapter(ShellAdapter):
                 + " -Filter "
                 + ps_quote(action.pattern)
                 + (" -Recurse" if action.recursive or action.kind == "find" else "")
+                + " -ErrorAction Stop"
             )
         if action.kind == "read":
-            return "Get-Content -LiteralPath " + quoted
+            return "Get-Content -LiteralPath " + quoted + " -Encoding UTF8 -ErrorAction Stop"
         if action.kind == "delete":
-            return "Remove-Item -LiteralPath " + quoted + (" -Recurse" if action.recursive else "")
+            return "Remove-Item -LiteralPath " + quoted + (" -Recurse" if action.recursive else "") + " -ErrorAction Stop"
         if action.kind == "env":
             return (
                 "[Environment]::SetEnvironmentVariable("

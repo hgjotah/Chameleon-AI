@@ -15,8 +15,15 @@ from chameleon.platform.base import PlatformAdapter
 _spawn_lock = threading.RLock()
 
 
-def child_environment(environment: dict[str, str] | None = None) -> dict[str, str]:
-    result = dict(environment or os.environ)
+def child_environment(environment: dict[str, str] | None = None, executable: str = "") -> dict[str, str]:
+    result = dict(os.environ if environment is None else environment)
+    if Path(executable).name.casefold() in ("powershell.exe", "pwsh.exe"):
+        # Python intermediaries preserve PowerShell 7's module path. Windows
+        # PowerShell then loads incompatible 7.x system modules (Microsoft docs).
+        # Let the new shell construct its own edition's default module paths.
+        for key in list(result):
+            if key.casefold() == "psmodulepath":
+                result.pop(key)
     bundle = getattr(sys, "_MEIPASS", None)
     if bundle:
         base = Path(bundle)
@@ -51,8 +58,10 @@ def external_process_scope() -> Iterator[None]:
 
 
 def launch(args: list[str], **kwargs: Any) -> subprocess.Popen[Any]:
-    kwargs["env"] = child_environment(kwargs.get("env"))
+    kwargs["env"] = child_environment(kwargs.get("env"), args[0])
     kwargs.setdefault("stdin", subprocess.DEVNULL)
+    kwargs.setdefault("stdout", subprocess.DEVNULL)
+    kwargs.setdefault("stderr", subprocess.DEVNULL)
     with external_process_scope():
         return subprocess.Popen(args, **kwargs)
 

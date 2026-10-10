@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QMessageBox
 
 from chameleon.core.config import Config
 from chameleon.core.privacy import configure_logging
@@ -27,7 +28,7 @@ config.terminal.start_directory = temp.name
 with_ai = "--ai" in sys.argv
 if with_ai:
     config.ai.timeout = 180
-target = Path(temp.name) / "subfolder Niño"
+target = Path(temp.name) / ("Subfolder muy largo con espacios y Niño " * 2).rstrip()
 target.mkdir()
 if with_ai:
     (target / "large-verified.py").write_bytes(b"#" * 1100000)
@@ -39,10 +40,13 @@ start = time.monotonic()
 stage = 0
 results: list[str] = []
 failed = False
+accept_creation = False
+confirmation_count = 0
+creation_file = target / "archivo Niño & 100%.txt"
 
 
 def tick() -> None:
-    global stage, failed
+    global stage, failed, confirmation_count
     session = window.session
     if time.monotonic() - start > (210 if with_ai else 45):
         failed = True
@@ -51,9 +55,16 @@ def tick() -> None:
         return
     if not session:
         return
+    for dialog in app.topLevelWidgets():
+        if isinstance(dialog, QMessageBox) and "confirmación" in dialog.windowTitle():
+            button = dialog.button(QMessageBox.StandardButton.Yes if accept_creation else QMessageBox.StandardButton.No)
+            if button:
+                confirmation_count += 1
+                button.click()
+            return
     if stage == 0 and session.at_prompt:
         results.append("PASS: Qt local renderer / ConPTY prompt")
-        window.view.page().runJavaScript("feed('subfolder Niño')")
+        window.view.page().runJavaScript("feed(" + json.dumps("ve a " + str(target)) + ")")
         stage = 1
         QTimer.singleShot(700, lambda: window.view.page().runJavaScript("feed('\\r')"))
     elif stage == 1 and session.at_prompt and session.cwd == target:
@@ -76,8 +87,11 @@ def tick() -> None:
         QTimer.singleShot(500, lambda: window.view.page().runJavaScript("feed('\\r')"))
     elif stage == 3 and ">>>" in session.tail and not session.at_prompt:
         results.append("PASS: REPL raw mode")
-        window.view.page().runJavaScript("feed(\"print('REPL_RESULT', 17*19)\\r\")")
-        stage = 4
+        window.view.page().runJavaScript(
+            "term.write(" + json.dumps("\x1b]0;Chameleon-" + session.token + ";" + str(session.cwd) + "\x07") + ")"
+        )
+        stage = 10
+        QTimer.singleShot(300, verify_replay)
     elif stage == 4 and "REPL_RESULT 323" in session.tail:
         results.append("PASS: REPL input bypasses AI")
         window.view.page().runJavaScript("feed('exit()\\r')")
@@ -90,11 +104,49 @@ def tick() -> None:
             stage = 7
             QTimer.singleShot(500, lambda: window.view.page().runJavaScript("feed('\\r')"))
         else:
-            complete_render()
+            start_creation()
     elif stage == 7 and session.at_prompt and "large-verified.py\r\n" in session.tail:
         assert "small-verified.py\r\n" not in session.tail
         results.append("PASS: actual Qwen -> validated filtered query -> native shell output")
+        start_creation()
+
+    elif stage == 8 and session.at_prompt and confirmation_count == 1:
+        assert not creation_file.exists()
+        results.append("PASS: declined file creation leaves filesystem unchanged")
+        enter_creation(True)
+    elif stage == 9 and session.at_prompt and creation_file.is_file():
+        if creation_file.read_text(encoding="utf-8") != "Hola, acci\u00f3n & echo NO_EJECUTAR":
+            failed = True
+            results.append("FAIL: content mismatch " + ascii(creation_file.read_text(encoding="utf-8")))
+            finish()
+            return
+        results.append("PASS: natural file creation, literal Unicode content, accepted confirmation")
         complete_render()
+
+
+def verify_replay() -> None:
+    global stage, failed
+    if window.session and window.session.at_prompt:
+        failed = True
+        results.append("FAIL: replayed window title enabled AI in REPL")
+        finish()
+        return
+    results.append("PASS: replayed window title leaves REPL in raw mode")
+    window.view.page().runJavaScript("feed(\"print('REPL_RESULT', 17*19)\\r\")")
+    stage = 4
+
+
+def start_creation() -> None:
+    enter_creation(False)
+
+
+def enter_creation(accept: bool) -> None:
+    global stage, accept_creation
+    accept_creation = accept
+    stage = 9 if accept else 8
+    line = 'crea un archivo llamado "archivo Niño & 100%.txt" con contenido "Hola, acción & echo NO_EJECUTAR"'
+    window.view.page().runJavaScript("feed(" + json.dumps(line) + ")")
+    QTimer.singleShot(50, lambda: window.view.page().runJavaScript("feed('\\r')"))
 
 
 def complete_render() -> None:

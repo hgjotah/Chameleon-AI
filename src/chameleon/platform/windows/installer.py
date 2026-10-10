@@ -2,9 +2,12 @@ import base64
 import ctypes
 import hashlib
 import json
+import logging
 import os
 import shutil
 import time
+import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -226,6 +229,7 @@ def install(
     profiles: list[Path] | None = None,
     integrate: bool = True,
     desktop: bool = False,
+    progress: Callable[[str], None] | None = None,
 ) -> None:
     if not (payload / "ChameleonCore.exe").is_file():
         raise OSError("Payload incompleto. Ejecuta scripts/build.ps1 primero.")
@@ -253,59 +257,126 @@ def install(
                 raise OSError("Cierra Chameleon Terminal y Settings antes de Repair/Update.")
     root.mkdir(parents=True, exist_ok=True)
     previous = read_manifest(root)
+    profile_list = list(dict.fromkeys(profile_list + [Path(p) for p in previous.get("profiles", [])]))
+    for profile in profile_list:
+        render_profile(profile.read_bytes() if profile.exists() else b"", root / "bin" / "Chameleon.psm1")
+    required_bytes = sum(p.stat().st_size for p in payload.rglob("*") if p.is_file()) + 16 * 1024 * 1024
+    if shutil.disk_usage(root).free < required_bytes:
+        raise OSError(f"No hay espacio suficiente para instalar el runtime. Libera al menos {required_bytes // 1048576} MB y vuelve a intentarlo.")
+    # Snapshot small integration files. Keep the old runtime until everything commits.
+    affected = [root / "bin" / "chameleon.cmd", root / "bin" / "Chameleon.psm1",
+                root / "resources" / "chameleon.ico", root / "install.json",
+                root / "config" / "config.toml", *profile_list]
+    if integrate:
+        programs = Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Chameleon AI"
+        affected.extend(programs / (name + ".lnk") for name in ("Chameleon Terminal", "Chameleon Settings", "Uninstall Chameleon"))
+        if desktop:
+            affected.append(known_folder(FOLDERS["Desktop"]) / "Chameleon Terminal.lnk")
+    snapshots = {p: p.read_bytes() if p.exists() else None for p in affected}
+    old_path = user_path() if integrate else ""
+    registry_values = []
+    if integrate:
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Uninstall\ChameleonAI") as key:
+                for index in range(winreg.QueryInfoKey(key)[1]):
+                    registry_values.append(winreg.EnumValue(key, index))
+        except FileNotFoundError:
+            pass
     # Copy into staging and validate all files before replacing any installed executable.
     staging = root / "runtime" / "staging"
     if staging.exists():
         shutil.rmtree(staging)
+    if progress:
+        progress("Copiando y verificando el runtime incluido…")
     shutil.copytree(payload, staging)
-    hashes = {
-        str(p.relative_to(staging)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in staging.rglob("*")
-        if p.is_file()
-    }
+    hashes = {}
+    for p in staging.rglob("*"):
+        if p.is_file():
+            with p.open("rb") as stream:
+                hashes[str(p.relative_to(staging))] = hashlib.file_digest(stream, "sha256").hexdigest()
+    if progress:
+        progress("Runtime verificado. Configurando shells y accesos directos…")
     core = root / "core"
-    if core.exists():
-        # A running installed GUI holds DLLs open. Setup is relaunched from an external copy by the bootstrap.
-        backup = root / "core.previous"
+    backup = root / "runtime" / ("backup-" + uuid.uuid4().hex)
+    replaced = False
+    try:
+        if core.exists():
+            # A running installed GUI holds DLLs open. Setup is relaunched from an external copy by the bootstrap.
+            core.rename(backup)
+        staging.rename(core)
+        replaced = True
+        for directory in ("bin", "resources", "runtime", "config", "logs"):
+            (root / directory).mkdir(exist_ok=True)
+        shutil.copy2(asset_dir() / "shell" / "chameleon.cmd", root / "bin" / "chameleon.cmd")
+        shutil.copy2(asset_dir() / "shell" / "Chameleon.psm1", root / "bin" / "Chameleon.psm1")
+        shutil.copy2(asset_dir() / "icons" / "chameleon.ico", root / "resources" / "chameleon.ico")
+        for profile in profile_list:
+            edit_profile(profile, root / "bin" / "Chameleon.psm1")
+        if integrate:
+            secure_runtime(root)
+            set_user_path(path_add(user_path(), str(root / "bin")))
+            shortcuts(root, desktop)
+            registration(root)
+        config, _ = load_config(root)
+        save_config(config, root)
+        previous.update(
+            {
+                "version": __version__,
+                "profiles": [str(p) for p in profile_list],
+                "hashes": hashes,
+                "desktop_shortcut": desktop or previous.get("desktop_shortcut", False),
+            }
+        )
+        write_manifest(root, previous)
+    except Exception:
+        if replaced and core.exists():
+            shutil.rmtree(core)
         if backup.exists():
-            shutil.rmtree(backup)
-        core.rename(backup)
-    staging.rename(core)
-    for directory in ("bin", "resources", "runtime", "config", "logs"):
-        (root / directory).mkdir(exist_ok=True)
-    shutil.copy2(asset_dir() / "shell" / "chameleon.cmd", root / "bin" / "chameleon.cmd")
-    shutil.copy2(asset_dir() / "shell" / "Chameleon.psm1", root / "bin" / "Chameleon.psm1")
-    shutil.copy2(asset_dir() / "icons" / "chameleon.ico", root / "resources" / "chameleon.ico")
-    for profile in profile_list:
-        edit_profile(profile, root / "bin" / "Chameleon.psm1")
-    if integrate:
-        secure_runtime(root)
-        set_user_path(path_add(user_path(), str(root / "bin")))
-        shortcuts(root, desktop)
-        registration(root)
-    config, _ = load_config(root)
-    save_config(config, root)
-    previous.update(
-        {
-            "version": __version__,
-            "profiles": [str(p) for p in profile_list],
-            "hashes": hashes,
-            "desktop_shortcut": desktop or previous.get("desktop_shortcut", False),
-        }
-    )
-    write_manifest(root, previous)
-    backup = root / "core.previous"
+            backup.rename(core)
+        for path, original in snapshots.items():
+            if original is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(original)
+        if integrate:
+            set_user_path(old_path)
+            if registry_values:
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Uninstall\ChameleonAI") as key:
+                    for name, value, kind in registry_values:
+                        winreg.SetValueEx(key, name, 0, kind, value)
+            else:
+                registration(root, remove=True)
+        raise
     if backup.exists():
-        shutil.rmtree(backup)
+        try:
+            shutil.rmtree(backup)
+        except OSError:
+            logging.getLogger("chameleon").warning("Installed successfully; previous runtime cleanup deferred")
+
 
 
 def read_manifest(root: Path) -> dict[str, Any]:
     path = root / "install.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not path.exists():
+        return {}
+    try:
+        result = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(result, dict):
+            raise ValueError("Manifest must be an object")
+        return result
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError("install.json está dañado. Conserva una copia y recupera el manifiesto antes de reparar o desinstalar.") from exc
 
 
 def write_manifest(root: Path, manifest: dict[str, Any]) -> None:
-    (root / "install.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    temporary = root / ("install-" + uuid.uuid4().hex + ".tmp")
+    try:
+        temporary.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        temporary.replace(root / "install.json")
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def uninstall_integration(root: Path, integrate: bool = True) -> None:

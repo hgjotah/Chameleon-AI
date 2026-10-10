@@ -6,6 +6,9 @@ Asistente local para **Windows 10 1809+ y Windows 11 x64**, escrito en Python 3.
 chameleon ai ve a Downloads
 chameleon ai lista los pdf
 chameleon ai encuentra todos los PDF
+chameleon ai crea un archivo llamado notas.txt con contenido "Hola"
+chameleon ai crea una carpeta llamada proyecto
+chameleon ai copia notas.txt a copia.txt
 chameleon ai --dry-run busca archivos Python mayores de 1 MB
 chameleon ai elimina old.txt
 chameleon doctor
@@ -13,10 +16,12 @@ chameleon doctor
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
+En **0.2.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+
 ## Instalar y ejecutar
 
 1. Ejecuta `dist/ChameleonSetup.exe` (release autocontenida; no requiere Python).
-2. Pulsa **Install**. Si falta Ollama, acepta su instalación oficial y la descarga del modelo. Se comprueba la firma de Ollama y su inferencia local.
+2. Pulsa **Instalar Chameleon**. Si falta Ollama, acepta su instalación oficial y la descarga del modelo. Se comprueba la firma de Ollama y su inferencia local.
 3. Si PowerShell bloquea perfiles, Setup explica la política y ofrece **RemoteSigned CurrentUser** con consentimiento explícito. No modifica políticas silenciosamente.
 4. Abre un **nuevo** CMD o PowerShell y utiliza `chameleon ai ...`.
 5. Abre **Chameleon Terminal**, **Chameleon Settings** o **Uninstall Chameleon** desde Inicio.
@@ -25,7 +30,7 @@ Instalación por usuario en `%LOCALAPPDATA%\ChameleonAI`. El PATH se amplía con
 
 ## Chameleon Terminal
 
-CMD por defecto; Windows PowerShell y PowerShell 7 seleccionables en Settings. Los programas interactivos reciben entrada directa. En el prompt principal puedes escribir `Downloads` o una petición natural. Los comandos reconocidos, aliases y scripts van directamente al PTY. **Raw input** permite forzar entrada directa cuando lo necesites.
+CMD por defecto; abre otra sesión con el selector de shell o **+ Nueva sesión**. Los programas interactivos reciben entrada directa. En el prompt principal puedes escribir `Downloads` o una petición natural. Los comandos reconocidos, aliases y scripts van directamente al PTY. **Entrada directa** permite forzar entrada directa cuando lo necesites. **Guía** muestra ejemplos; **Ajustes** personaliza fuente, cursor, IA y privacidad.
 
 Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; Ctrl+Shift+C/V copia/pega; Ctrl+`+`/`-` cambia fuente; F11 pantalla completa. Las flechas, Tab e historial los gestiona el shell real. El pegado multilínea siempre se envía como entrada directa.
 
@@ -53,8 +58,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.1.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.1.0-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.2.0-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.2.0-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

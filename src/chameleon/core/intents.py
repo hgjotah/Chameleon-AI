@@ -2,6 +2,7 @@ import re
 import shutil
 import unicodedata
 from pathlib import Path
+from typing import Literal
 
 from chameleon.core.context import Context
 from chameleon.core.schemas import Action, Plan
@@ -27,7 +28,7 @@ def normalize(text: str) -> str:
 
 
 def resolve_path(value: str, ctx: Context) -> Path:
-    value = value.strip().strip('"').strip("'")
+    value = unquote(value)
     aliases = {
         "descargas": "Downloads",
         "documentos": "Documents",
@@ -47,12 +48,82 @@ def resolve_path(value: str, ctx: Context) -> Path:
     return (Path(ctx.cwd) / path).resolve() if not path.is_absolute() else path.resolve()
 
 
+def unquote(value: str) -> str:
+    value = value.strip()
+    return value[1:-1] if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'" else value
+
+
+CREATE = re.compile(
+    r"^(?:crea(?:me)?|créame|crear|haz(?:me)?|genera|create|make)\s+(?:(?:un|una|el|la|a|the)\s+)?"
+    r"(?P<kind>archivo|fichero|documento|carpeta|directorio|file|folder|directory)\b"
+    r"(?:\s+de texto)?(?:\s+(?:nuevo|nueva|new))?(?:\s+(?:llamado|llamada|con (?:el )?nombre|named|called))?\s*(?P<rest>.*)$",
+    re.I | re.S,
+)
+
+
+def split_phrase(value: str, expression: str) -> tuple[str, str] | None:
+    quoted = ""
+    protected: set[int] = set()
+    for index, char in enumerate(value):
+        if quoted:
+            protected.add(index)
+            if char == quoted:
+                quoted = ""
+        elif char in "\"'" and (index == 0 or value[index - 1].isspace()):
+            quoted = char
+            protected.add(index)
+    for match in re.finditer(expression, value, re.I):
+        if not any(index in protected for index in range(match.start(), match.end())):
+            return value[:match.start()].strip(), value[match.end():].strip()
+    return None
+
+
+def refine_request(original: str, answer: str, plan: Plan) -> str:
+    """Keep the requested operation when asking for a name or destination."""
+    creation = CREATE.match(original)
+    if creation and not creation.group("rest").strip():
+        return original.rstrip() + " " + answer
+    if creation and plan.summary.startswith("Indica el nombre"):
+        return original[:creation.start("rest")] + answer + " " + creation.group("rest")
+    if normalize(original).startswith(("elimina", "borra", "delete", "remove")):
+        return "elimina " + answer
+    if normalize(original).startswith(("ve a", "vete a", "entra en", "go to", "open folder")):
+        return "ve a " + answer
+    return original + "; aclaración: " + answer
+
+
 def local_plan(request: str, ctx: Context) -> Plan | None:
+    request = re.sub(r"^(?:por favor[, ]+|quiero que |puedes |podr[ií]as )", "", request.strip(), flags=re.I)
     text = normalize(request)
 
     def execute(action: Action, summary: str) -> Plan:
         return Plan(intent="execute", shell=ctx.shell, actions=[action], summary=summary)
 
+    creation = CREATE.match(request)
+    if creation:
+        directory = normalize(creation.group("kind")) in ("carpeta", "directorio", "folder", "directory")
+        rest = creation.group("rest").strip()
+        if not rest:
+            return Plan(intent="clarify", shell=ctx.shell, summary="¿Qué nombre o ruta quieres para la carpeta?" if directory else "¿Qué nombre o ruta quieres para el archivo?")
+        if re.match(r"^(?:en|in|con (?:contenido|texto)|with (?:content|text))\b", rest, re.I):
+            return Plan(intent="clarify", shell=ctx.shell, summary="Indica el nombre del archivo o carpeta que quieres crear.")
+        parts = split_phrase(rest, r"\s+(?:con (?:el )?(?:contenido|texto)|que (?:contenga|diga)|with (?:the )?(?:content|text))\s*:?\s*")
+        name, content = (parts[0], unquote(parts[1])) if parts else (rest, "")
+        location = split_phrase(name, r"\s+(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?")
+        creation_target = resolve_path(location[1], ctx) / unquote(location[0]) if location else resolve_path(name, ctx)
+        return execute(Action(kind="mkdir" if directory else "create", path=str(creation_target), content=content), f"Crear {'carpeta' if directory else 'archivo'}: {creation_target}" + (f"\nContenido:\n{content}" if content else ""))
+    reading = re.match(r"^(?:lee|leer|muestra el contenido de|read|show contents of)\s+(?:(?:el archivo|the file)\s+)?(.+)$", request, re.I)
+    if reading:
+        target = resolve_path(reading.group(1), ctx)
+        return execute(Action(kind="read", path=str(target)), f"Leer {target}")
+    transfer = re.match(r"^(copia|copiar|mueve|mover|copy|move)\s+(?:(?:el archivo|the file)\s+)?(.+?)\s+(?:a|al|to)\s+(.+)$", request, re.I)
+    if transfer:
+        source = resolve_path(transfer.group(2), ctx)
+        target = resolve_path(transfer.group(3), ctx)
+        if target.is_dir():
+            target /= source.name
+        kind: Literal["copy", "move"] = "copy" if normalize(transfer.group(1)).startswith("cop") else "move"
+        return execute(Action(kind=kind, path=str(source), destination=str(target)), f"{'Copiar' if kind == 'copy' else 'Mover'} {source} → {target}")
     if text in ("limpiar", "limpia", "clear", "limpia la pantalla", "clear screen"):
         return execute(Action(kind="clear"), "Limpiar pantalla")
     if text in ("atras", "sube una carpeta", "up", "go back", "..", "back"):
@@ -62,15 +133,15 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         request,
         flags=re.I,
     )
-    target = navigation.group(1) if navigation else request
-    path = resolve_path(target, ctx)
+    navigation_target = navigation.group(1) if navigation else request
+    path = resolve_path(navigation_target, ctx)
     if path.is_dir():
         return execute(Action(kind="cd", path=str(path)), "Cambiar directorio")
     if navigation:
         return Plan(
             intent="clarify",
             shell=ctx.shell,
-            summary=f"No se encontró la carpeta {target}. Indica una ruta existente.",
+            summary=f"No se encontró la carpeta {navigation_target}. Indica una ruta existente.",
         )
     if text in (
         "muestrame los archivos",
@@ -87,6 +158,8 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         "list processes",
         "dime que proceso esta usando mas ram",
     ):
+        return execute(Action(kind="processes", limit=20), "Procesos ordenados por memoria RAM")
+    if re.fullmatch(r"(?:muestra|muestrame|lista|show|list) (?:los |the )?(?:procesos|processes)(?: (?:que usan mas (?:memoria|ram)|using (?:the )?most (?:memory|ram)|por (?:memoria|ram)))?", text):
         return execute(Action(kind="processes", limit=20), "Procesos ordenados por memoria RAM")
     if re.fullmatch(
         r"(?:lista|muestra|muestrame|encuentra|busca|find|list|show)(?:me)?(?: todos)?(?: los)?(?: archivos)?(?: de)? (?:pdf|pdfs)",

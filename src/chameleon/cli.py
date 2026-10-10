@@ -12,12 +12,13 @@ from chameleon import __version__
 from chameleon.core.config import data_dir, load_config
 from chameleon.core.context import build_context
 from chameleon.core.engine import Engine
+from chameleon.core.intents import refine_request
 from chameleon.core.privacy import configure_logging, redact
 from chameleon.core.schemas import Action, ShellName
 from chameleon.core.sessions import SessionStore
 from chameleon.llm.base import ProviderError
 from chameleon.platform.windows.protocol import emit_cmd
-from chameleon.platform.windows.shells import CmdAdapter, PowerShellAdapter
+from chameleon.platform.windows.shells import CmdAdapter, PowerShellAdapter, describe_action
 from chameleon.safety.engine import Risk
 
 
@@ -48,6 +49,18 @@ async def run(args: argparse.Namespace) -> int:
     if warning:
         human(warning)
     operation = args.operation or "help"
+    if operation == "apply":
+        from chameleon.core.files import apply_file_action
+        from chameleon.safety.engine import RiskEngine
+
+        action = Action.model_validate_json(base64.b64decode(args.encoded or "", validate=True))
+        from chameleon.platform.windows.system import WindowsPlatform
+
+        decision = RiskEngine(WindowsPlatform().system_directory()).action(action, Path.cwd())
+        if decision.level == Risk.BLOCKED:
+            raise ValueError(decision.reason)
+        print(apply_file_action(action))
+        return 0
     if operation == "query":
         from chameleon.core.queries import file_query, process_query
 
@@ -111,13 +124,7 @@ async def run(args: argparse.Namespace) -> int:
             return 1
         if answer.isdigit() and 1 <= int(answer) <= len(plan.choices):
             answer = plan.choices[int(answer) - 1]
-        request = request + "; aclaración: " + answer
-        if plan.choices and answer in plan.choices:
-            request = (
-                "elimina " + answer
-                if request.casefold().startswith(("borra", "elimina", "delete", "remove"))
-                else "ve a " + answer
-            )
+        request = refine_request(request, answer, plan)
         ctx.recent.append(plan.summary)
     else:
         human("Demasiadas aclaraciones. No se ejecutó nada.")
@@ -126,17 +133,19 @@ async def run(args: argparse.Namespace) -> int:
         human(plan.summary)
         return 0 if plan.intent == "explain" else 1
     adapter = CmdAdapter() if shell == "cmd" else PowerShellAdapter()
-    commands = [adapter.render(action, cwd) for action in plan.actions]
     if assessment.level == Risk.BLOCKED:
         human("Bloqueado: " + assessment.reason)
         return 1
+    commands = [adapter.render(action, cwd) for action in plan.actions]
     if (
         args.show
         or args.dry_run
         or config.ai.show_generated_commands
         or assessment.level == Risk.CONFIRM
     ):
-        human(plan.summary + "\n\nComando:\n" + "\n".join(commands))
+        human(plan.summary + "\n\nAcciones:\n" + "\n\n".join(describe_action(a, cwd, shell != "cmd") for a in plan.actions))
+        if args.show or config.ai.show_generated_commands:
+            human("\nComando generado:\n" + "\n".join(commands))
     if args.dry_run:
         return 0
     if assessment.level == Risk.CONFIRM:
@@ -205,7 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         human("Cancelado.")
         return 130
     except (ProviderError, ValueError, OSError) as exc:
-        human(str(exc))
+        logging.getLogger("chameleon").warning("Operation failed: %s", type(exc).__name__)
+        if isinstance(exc, PermissionError):
+            human(f"Windows denegó acceso a {exc.filename or 'la ruta'}. Usa una carpeta de usuario (Documentos o Escritorio) y comprueba sus permisos; no hace falta elevar la terminal para archivos normales.")
+        else:
+            human(str(exc))
         return 1
     except Exception:
         logging.getLogger("chameleon").exception("Internal failure")

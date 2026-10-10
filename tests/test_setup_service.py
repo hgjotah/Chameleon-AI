@@ -23,7 +23,8 @@ def test_no_external_install_without_consent(
     monkeypatch.setattr(
         service, "install_ollama", lambda progress: pytest.fail("Unconsented install")
     )
-    SetupService(tmp_path, tmp_path, events.append).configure_ai(InstallOptions(), {})
+    ready = SetupService(tmp_path, tmp_path, events.append).configure_ai(InstallOptions(), {})
+    assert not ready
     assert any("AI OFFLINE" in event for event in events)
 
 
@@ -48,3 +49,19 @@ def test_existing_model_is_probed_without_download(
     monkeypatch.setattr(service, "OllamaProvider", ReadyProvider)
     SetupService(tmp_path, tmp_path, lambda message: None).configure_ai(InstallOptions(), {})
     assert calls == ["probe"]
+
+
+def test_failed_ai_probe_does_not_report_core_installation_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from chameleon.llm.base import ProviderError
+
+    monkeypatch.setattr(service, "install", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "read_manifest", lambda root: {})
+    monkeypatch.setattr(SetupService, "configure_policies", lambda *args: None)
+    def fail(*args: object) -> None:
+        raise ProviderError("Model timed out")
+    monkeypatch.setattr(SetupService, "configure_ai", fail)
+    events: list[str] = []
+    result = SetupService(tmp_path, tmp_path, events.append).run(InstallOptions())
+    assert "Terminal instalado correctamente" in result
+    assert "necesita atención" in result
+    assert any("IA pendiente" in event for event in events)

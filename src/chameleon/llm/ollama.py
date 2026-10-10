@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 from collections.abc import Callable
@@ -43,10 +42,16 @@ class OllamaProvider(LLMProvider):
             schema["$defs"]["Action"] = next(
                 variant for variant in variants if variant["properties"]["kind"]["const"] == "find"
             )
+        elif re.match(r"\s*(?:muestra|muestrame|muéstrame|lista|show|list|dime)\b", request, re.I) and re.search(r"\b(?:procesos|processes)\b", request, re.I):
+            schema["$defs"]["Action"] = next(variant for variant in schema["$defs"]["Action"]["anyOf"] if variant["properties"]["kind"]["const"] == "processes")
+        elif re.match(r"\s*(?:explain|explica|what is|qu[eé] es)\b", request, re.I):
+            schema["properties"]["intent"] = {"const": "explain", "type": "string"}
+            schema["properties"]["actions"] = {"type": "array", "items": {}, "maxItems": 0}
+            schema.pop("$defs", None)
         messages = [
             {
                 "role": "system",
-                "content": SYSTEM_PROMPT + json.dumps(schema, separators=(",", ":")),
+                "content": SYSTEM_PROMPT + "\nRequired JSON schema:\n" + json.dumps(schema, separators=(",", ":")),
             },
             {
                 "role": "user",
@@ -91,7 +96,7 @@ class OllamaProvider(LLMProvider):
                             "format": schema,
                             "think": False,
                             "keep_alive": self.config.keep_alive,
-                            "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 2048},
+                            "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 768},
                         },
                     )
                     response.raise_for_status()
@@ -118,6 +123,8 @@ class OllamaProvider(LLMProvider):
                                 "Other intents MUST have actions: []. Match the target shell.",
                             }
                         )
+                except httpx.TimeoutException as exc:
+                    raise ProviderError("El modelo local tardó demasiado. Prueba una petición más concreta o aumenta el tiempo límite en Ajustes → IA. Ctrl+C cancela; los comandos y las acciones locales siguen disponibles.") from exc
                 except httpx.HTTPError as exc:
                     raise ProviderError(
                         'IA local no disponible. Ejecuta "chameleon doctor".'
@@ -164,9 +171,24 @@ class OllamaProvider(LLMProvider):
             raise ProviderError("La descarga no se pudo verificar.")
 
     async def probe(self) -> None:
-        # Actually exercise structured output, without executing anything.
-        context = Context(cwd="C:\\", shell="cmd")
-        await asyncio.wait_for(
-            self.plan("Explain briefly what Chameleon does; intent explain", context),
-            timeout=self.config.timeout,
-        )
+        # Verify local metadata before sending a minimal structured generation.
+        # A complete action plan needlessly generated hundreds of tokens here.
+        async with self.client() as client:
+            try:
+                metadata = await client.post("/api/show", json={"model": self.config.model}, timeout=5)
+                metadata.raise_for_status()
+                info = metadata.json()
+                if info.get("remote_host") or info.get("remote_model") or not info.get("model_info"):
+                    raise ProviderError("El modelo no es una descarga local verificable.")
+                result = await client.post("/api/chat", json={
+                    "model": self.config.model,
+                    "messages": [{"role": "user", "content": 'Return exactly {"ok":true}.'}],
+                    "format": {"type": "object", "properties": {"ok": {"const": True}}, "required": ["ok"], "additionalProperties": False},
+                    "stream": False, "think": False, "keep_alive": self.config.keep_alive,
+                    "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 16},
+                })
+                result.raise_for_status()
+                if json.loads(result.json()["message"]["content"]) != {"ok": True}:
+                    raise ProviderError("La prueba de inferencia local no devolvió el resultado esperado.")
+            except (httpx.HTTPError, ValueError, KeyError) as exc:
+                raise ProviderError("No se completó la prueba del modelo local. El terminal está instalado; usa Reparar para reintentar la IA.") from exc

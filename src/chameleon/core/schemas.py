@@ -10,7 +10,7 @@ class Action(BaseModel):
     """Typed operations avoid shell interpolation for paths and environment values."""
 
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["cd", "list", "find", "read", "delete", "clear", "env", "processes", "command"]
+    kind: Literal["cd", "list", "find", "read", "delete", "clear", "env", "processes", "command", "create", "mkdir", "copy", "move"]
     path: str = Field(default="", max_length=4096)
     pattern: str = Field(default="*", max_length=256)
     recursive: bool = False
@@ -21,16 +21,24 @@ class Action(BaseModel):
     command: str = Field(default="", max_length=8192)
     name: str = Field(default="", max_length=256)
     value: str = Field(default="", max_length=4096)
+    content: str = Field(default="", max_length=65536)
+    destination: str = Field(default="", max_length=4096)
 
     @model_validator(mode="after")
     def valid_fields(self) -> "Action":
-        for value in (self.path, self.pattern, self.command, self.name, self.value):
+        for value in (self.path, self.pattern, self.command, self.name, self.value, self.destination):
             if any(ord(c) < 32 for c in value):
                 raise ValueError("Control characters are not permitted in actions")
         if self.kind == "command" and not self.command.strip():
             raise ValueError("Empty command")
-        if self.kind in ("cd", "read", "delete") and not self.path:
+        if "\x00" in self.content:
+            raise ValueError("NUL is not permitted in file content")
+        if self.kind in ("cd", "read", "delete", "create", "mkdir", "copy", "move") and not self.path:
             raise ValueError("Missing path")
+        if self.kind in ("copy", "move") and not self.destination:
+            raise ValueError("Missing destination")
+        if self.destination and self.kind not in ("copy", "move"):
+            raise ValueError("Destination is only valid for copy or move")
         return self
 
 
@@ -58,6 +66,13 @@ class Plan(BaseModel):
 def generation_schema() -> dict:
     """Expose only applicable fields per action to constrained model decoding."""
     schema = Plan.model_json_schema()
+    # The wire protocol restores these defaults after validation. Asking a small
+    # model to generate advisory risk flags wastes tokens and suggests authority
+    # that only the independent risk engine actually has.
+    for name in ("version", "confidence", "model_risk", "requires_admin"):
+        schema["properties"].pop(name)
+    schema["properties"]["summary"]["maxLength"] = 240
+    schema["properties"]["actions"]["maxItems"] = 4
     schema["required"] = list(schema["properties"])
     fields = schema["$defs"]["Action"]["properties"]
     variants = []
@@ -71,6 +86,10 @@ def generation_schema() -> dict:
         "env": ["name", "value"],
         "processes": ["limit"],
         "command": ["command"],
+        "create": ["path", "content"],
+        "mkdir": ["path"],
+        "copy": ["path", "destination"],
+        "move": ["path", "destination"],
     }
     for kind, names in by_kind.items():
         properties = {"kind": {"type": "string", "const": kind}}

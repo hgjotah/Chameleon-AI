@@ -82,3 +82,27 @@ def test_install_preflight_preserves_existing_payload(tmp_path: Path, shell_inst
         install(root, payload, profiles=[profile], integrate=False)
     assert marker.read_text() == "existing installation"
     assert profile.read_bytes() == original
+
+
+def test_failed_repair_rolls_back_payload_profiles_and_manifest(tmp_path: Path, shell_install: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from chameleon.platform.windows import installer
+
+    payload = shell_install / "core"
+    root = tmp_path / "rollback"
+    profile = tmp_path / "profile.ps1"
+    profile.write_bytes(b"# user profile\n")
+    install(root, payload, profiles=[profile], integrate=False)
+    marker = root / "core" / "original.txt"
+    marker.write_text("original")
+    before_profile = profile.read_bytes()
+    before_manifest = (root / "install.json").read_bytes()
+    before_module = (root / "bin" / "Chameleon.psm1").read_bytes()
+    def fail(*args: object) -> None:
+        raise OSError("Injected failure at final manifest commit")
+    monkeypatch.setattr(installer, "write_manifest", fail)
+    with pytest.raises(OSError, match="Injected"):
+        install(root, payload, profiles=[profile], integrate=False)
+    assert marker.read_text() == "original"
+    assert profile.read_bytes() == before_profile
+    assert (root / "install.json").read_bytes() == before_manifest
+    assert (root / "bin" / "Chameleon.psm1").read_bytes() == before_module

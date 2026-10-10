@@ -1,5 +1,7 @@
+import logging
 import os
 import signal
+import socket
 import threading
 from pathlib import Path
 from typing import Any
@@ -22,7 +24,7 @@ class ConPtyBackend(PtyBackend):
             self.process: Any = PtyProcess.spawn(
                 argv,
                 cwd=str(cwd),
-                env=child_environment(env),
+                env=child_environment(env, argv[0]),
                 dimensions=(rows, cols),
                 # pywinpty's spawn uses `backend or PYWINPTY_BACKEND`. Its zero
                 # constant would permit an environment override; a string fixes it.
@@ -72,5 +74,23 @@ class ConPtyBackend(PtyBackend):
                     continue
             shell.terminate()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return
-        self.process.pty.cancel_io()
+            pass
+        # A child that already exited still owns the relay socket and native
+        # reader. Release both, including blocked recv(), before Qt teardown.
+        try:
+            self.process.pty.cancel_io()
+        except Exception:
+            logging.getLogger("chameleon").debug("Native PTY reader already closed")
+        try:
+            self.process.fileobj.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        try:
+            self.process.close(force=True)
+        except Exception:
+            logging.getLogger("chameleon").debug("PTY process already closed")
+        finally:
+            # PtyProcess.isalive() marks itself closed when the child exits;
+            # its close() then skips the socket cleanup even though recv was open.
+            self.process.fileobj.close()
+            self.process._server.close()

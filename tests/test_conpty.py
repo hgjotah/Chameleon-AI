@@ -75,3 +75,31 @@ def test_real_conpty_prompt_repl_resize_unicode(tmp_path: Path) -> None:
         thread.join(timeout=2)
     assert not thread.is_alive()
     assert re.search(r"\x1b\]0;Chameleon-" + token, output)
+
+
+def test_close_after_shell_exit_releases_reader(tmp_path: Path) -> None:
+    argv, env, _ = child_shell("cmd", tmp_path / "state.json")
+    backend = ConPtyBackend(argv, tmp_path, env)
+    ready = threading.Event()
+
+    def reader() -> None:
+        try:
+            while not backend.closed:
+                if ">" in backend.read():
+                    ready.set()
+        except Exception:
+            return
+
+    thread = threading.Thread(target=reader, daemon=True)
+    thread.start()
+    try:
+        assert ready.wait(10), "Native shell did not reach its prompt"
+        backend.write("exit\r")
+        deadline = time.monotonic() + 5
+        while backend.process.isalive() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not backend.process.isalive(), "Native shell did not exit"
+    finally:
+        backend.close()
+        thread.join(timeout=3)
+    assert not thread.is_alive(), "Exited shell left a blocked reader"

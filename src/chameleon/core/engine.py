@@ -25,12 +25,14 @@ class Engine:
             plan = await self.provider.plan(request, context)
         current = Path(context.cwd)
         for action in plan.actions:
-            if action.kind in ("cd", "list", "find", "read", "delete"):
+            if action.kind in ("cd", "list", "find", "read", "delete", "create", "mkdir", "copy", "move"):
                 action.path = (
                     str((current / action.path).resolve()) if action.path else str(current)
                 )
                 if action.kind == "cd":
                     current = Path(action.path)
+            if action.destination:
+                action.destination = str((current / action.destination).resolve())
         self.risk = RiskEngine(context.system_directory, strict=self.config.safety.strict_mode)
         assessment = self.risk.assess(plan, Path(context.cwd))
         if assessment.requires_admin and not context.admin:

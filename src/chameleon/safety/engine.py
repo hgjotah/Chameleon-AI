@@ -40,6 +40,23 @@ class RiskEngine:
         )
 
     def action(self, action: Action, cwd: Path) -> Assessment:
+        if action.kind in ("create", "mkdir", "copy", "move"):
+            from chameleon.core.files import validate_target
+
+            target = (cwd / (action.destination or action.path)).resolve()
+            try:
+                validate_target(target)
+            except ValueError as exc:
+                return Assessment(Risk.BLOCKED, str(exc))
+            if self.protected(str(target)) or action.kind == "move" and self.protected(action.path):
+                return Assessment(Risk.BLOCKED, "Elige una carpeta de usuario; no se modifican directorios protegidos del sistema.")
+            if target.exists():
+                return Assessment(Risk.BLOCKED, f"Ya existe {target}. No se sobrescribió nada; elige otro nombre.")
+            if action.kind != "mkdir" and not target.parent.is_dir():
+                return Assessment(Risk.BLOCKED, f"La carpeta de destino no existe: {target.parent}. Crea primero esa carpeta.")
+            if action.kind in ("copy", "move") and not (cwd / action.path).is_file():
+                return Assessment(Risk.BLOCKED, "El archivo de origen no existe.")
+            return Assessment(Risk.CONFIRM, "Se creará una carpeta." if action.kind == "mkdir" else "Se modifican archivos. Revisa el destino y el contenido.")
         if action.kind == "delete":
             resolved = str((cwd / action.path).resolve())
             if self.protected(resolved) or self.protected(action.path):
@@ -63,6 +80,10 @@ class RiskEngine:
         if action.kind != "command":
             if action.kind in ("cd", "read", "delete") and not (cwd / action.path).exists():
                 return Assessment(Risk.BLOCKED, "La ruta no existe; no se inventan destinos.")
+            if action.kind in ("cd", "list", "find") and not (cwd / action.path).is_dir():
+                return Assessment(Risk.BLOCKED, "La ruta debe ser una carpeta existente.")
+            if action.kind == "read" and not (cwd / action.path).is_file():
+                return Assessment(Risk.BLOCKED, "Selecciona un archivo existente para leer su contenido.")
             return Assessment(
                 Risk.CONFIRM if self.strict else Risk.SAFE, "Operación de consulta o navegación."
             )
@@ -210,5 +231,5 @@ class RiskEngine:
         return Assessment(
             worst.level,
             worst.reason,
-            plan.requires_admin or any(d.requires_admin for d in decisions),
+            any(d.requires_admin for d in decisions),
         )
