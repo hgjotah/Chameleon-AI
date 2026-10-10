@@ -1,0 +1,101 @@
+import base64
+import re
+import sys
+from pathlib import Path
+
+from chameleon.core.schemas import Action
+from chameleon.platform.base import ShellAdapter
+
+
+def query_command(action: Action, powershell: bool = False) -> str:
+    encoded = base64.b64encode(action.model_dump_json().encode("utf-8")).decode("ascii")
+    quote = ps_quote if powershell else cmd_quote
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).with_name("ChameleonCore.exe")
+        command = quote(str(executable))
+    else:
+        command = quote(sys.executable) + " -m chameleon"
+    return ("& " if powershell else "") + command + " query --encoded " + encoded
+
+
+def needs_query(action: Action) -> bool:
+    return (
+        action.kind == "processes"
+        or action.kind in ("find", "list")
+        and bool(action.min_size_bytes or action.modified_after or action.file_type != "any")
+    )
+
+
+def cmd_quote(value: str, batch: bool = True) -> str:
+    if any(c in value for c in '\r\n\x00"'):
+        raise ValueError("CMD no admite comillas ni controles en este argumento")
+    # Batch files parse percent once; delayed expansion is disabled by the executor.
+    return '"' + (value.replace("%", "%%") if batch else value) + '"'
+
+
+def ps_quote(value: str) -> str:
+    if "\x00" in value:
+        raise ValueError("Invalid NUL")
+    return "'" + value.replace("'", "''") + "'"
+
+
+class CmdAdapter(ShellAdapter):
+    def render(self, action: Action, cwd: Path) -> str:
+        if needs_query(action):
+            return query_command(action)
+        path = str((cwd / action.path).resolve()) if action.path else str(cwd)
+        quoted = cmd_quote(path)
+        if action.kind == "cd":
+            return "cd /d " + quoted
+        if action.kind == "clear":
+            return "cls"
+        if action.kind in ("list", "find"):
+            if any(c in action.pattern for c in '\\/:"%!?&|<>^()'):
+                raise ValueError("Patrón inválido")
+            return (
+                "dir "
+                + ("/s /b " if action.recursive or action.kind == "find" else "")
+                + cmd_quote(str(Path(path) / action.pattern))
+            )
+        if action.kind == "read":
+            return "type " + quoted
+        if action.kind == "delete":
+            return ("rmdir /s /q " if action.recursive else "del /q ") + quoted
+        if action.kind == "env":
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", action.name):
+                raise ValueError("Variable inválida")
+            return "set " + cmd_quote(action.name + "=" + action.value)
+        return action.command
+
+
+class PowerShellAdapter(ShellAdapter):
+    def render(self, action: Action, cwd: Path) -> str:
+        if needs_query(action):
+            return query_command(action, powershell=True)
+        path = str((cwd / action.path).resolve()) if action.path else str(cwd)
+        quoted = ps_quote(path)
+        if action.kind == "cd":
+            return "Set-Location -LiteralPath " + quoted
+        if action.kind == "clear":
+            return "Clear-Host"
+        if action.kind in ("list", "find"):
+            return (
+                "Get-ChildItem -LiteralPath "
+                + quoted
+                + " -Filter "
+                + ps_quote(action.pattern)
+                + (" -Recurse" if action.recursive or action.kind == "find" else "")
+            )
+        if action.kind == "read":
+            return "Get-Content -LiteralPath " + quoted
+        if action.kind == "delete":
+            return "Remove-Item -LiteralPath " + quoted + (" -Recurse" if action.recursive else "")
+        if action.kind == "env":
+            return (
+                "[Environment]::SetEnvironmentVariable("
+                + ps_quote(action.name)
+                + ", "
+                + ps_quote(action.value)
+                + ", 'Process')"
+            )
+        return action.command

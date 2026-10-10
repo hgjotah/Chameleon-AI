@@ -1,0 +1,68 @@
+import datetime
+import platform
+import re
+import shutil
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+
+from chameleon.core.privacy import redact
+from chameleon.core.schemas import ShellName
+from chameleon.platform.windows.system import WindowsPlatform
+
+
+class Context(BaseModel):
+    os: str = Field(default_factory=platform.platform)
+    shell: ShellName = "cmd"
+    shell_version: str = "unknown"
+    cwd: str
+    admin: bool = False
+    system_directory: str = "C:\\Windows"
+    known_directories: dict[str, str] = Field(default_factory=dict)
+    entries: list[str] = Field(default_factory=list)
+    executables: dict[str, str] = Field(default_factory=dict)
+    recent: list[str] = Field(default_factory=list)
+    observed_output: str = ""
+    current_time: str = Field(
+        default_factory=lambda: datetime.datetime.now().astimezone().isoformat()
+    )
+
+    def model_payload(self, request: str) -> dict:
+        data = self.model_dump()
+        # Terminal escape sequences are control data, not useful linguistic context.
+        visible = re.sub(
+            r"\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~])", "", self.observed_output
+        )
+        visible = "".join(c for c in visible if ord(c) >= 32 or c in "\r\n\t")
+        data["observed_output"] = redact(visible)[-600:]
+        data["recent"] = [redact(item)[:400] for item in self.recent[-4:]]
+        data["entries"] = self.entries[:40]
+        data["executables"] = {
+            name: path
+            for name, path in self.executables.items()
+            if re.search(r"\b" + re.escape(name) + r"\b", request, re.I)
+        }
+        return {name: value for name, value in data.items() if value not in ("", [], {})}
+
+
+def build_context(cwd: Path, shell: ShellName, recent: list[str] | None = None) -> Context:
+    adapter = WindowsPlatform()
+    entries: list[str] = []
+    try:
+        entries = sorted(p.name + ("/" if p.is_dir() else "") for p in cwd.iterdir())[:100]
+    except OSError:
+        entries = []
+    return Context(
+        shell=shell,
+        cwd=str(cwd),
+        admin=adapter.is_admin(),
+        system_directory=adapter.system_directory(),
+        known_directories=adapter.known_directories(),
+        entries=entries,
+        recent=[redact(s)[:1000] for s in (recent or [])[-6:]],
+        executables={
+            name: found
+            for name in ("git", "python", "winget", "npm", "ssh")
+            if (found := shutil.which(name))
+        },
+    )

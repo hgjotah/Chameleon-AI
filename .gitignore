@@ -1,0 +1,16 @@
+.venv/
+.build-venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+node_modules/
+artifacts/
+*.log
+.coverage
+htmlcov/
+/ChameleonSetup.spec

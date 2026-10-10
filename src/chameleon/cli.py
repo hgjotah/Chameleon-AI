@@ -1,0 +1,215 @@
+import argparse
+import asyncio
+import base64
+import json
+import logging
+import os
+import sys
+from io import TextIOWrapper
+from pathlib import Path
+
+from chameleon import __version__
+from chameleon.core.config import data_dir, load_config
+from chameleon.core.context import build_context
+from chameleon.core.engine import Engine
+from chameleon.core.privacy import configure_logging, redact
+from chameleon.core.schemas import Action, ShellName
+from chameleon.core.sessions import SessionStore
+from chameleon.llm.base import ProviderError
+from chameleon.platform.windows.protocol import emit_cmd
+from chameleon.platform.windows.shells import CmdAdapter, PowerShellAdapter
+from chameleon.safety.engine import Risk
+
+
+def human(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
+def ask(message: str) -> str:
+    human(message)
+    # Redirected shells can still use their attached console. Headless runs decline.
+    try:
+        if os.environ.get("CHAMELEON_NONINTERACTIVE"):
+            return ""
+        if sys.stdin.isatty():
+            return input()
+        if os.name == "nt" and not os.environ.get("CHAMELEON_NONINTERACTIVE"):
+            with open("CONIN$", encoding="utf-8") as console:
+                return console.readline().strip()
+    except (OSError, EOFError):
+        return ""
+    return ""
+
+
+async def run(args: argparse.Namespace) -> int:
+    root = data_dir()
+    config, warning = load_config(root)
+    configure_logging(root, args.debug)
+    if warning:
+        human(warning)
+    operation = args.operation or "help"
+    if operation == "query":
+        from chameleon.core.queries import file_query, process_query
+
+        action = Action.model_validate_json(base64.b64decode(args.encoded or "", validate=True))
+        if action.kind == "processes":
+            print(f"{'Process':30} {'PID':>8} {'RAM MB':>12}")
+            for name, pid, memory in process_query(action.limit):
+                print(f"{name:30} {pid:8} {memory / 1048576:12.1f}")
+        elif action.kind in ("find", "list"):
+            for path in file_query(action, Path(args.cwd or os.getcwd())):
+                print(path)
+        else:
+            raise ValueError("Operación de consulta inválida")
+        return 0
+    if operation in ("help", "version"):
+        human(
+            f"Chameleon AI {__version__}"
+            + (
+                "\nUso: chameleon ai [--show] [--dry-run] <petición>\n     chameleon status | doctor | version | terminal | settings | setup"
+                if operation == "help"
+                else ""
+            )
+        )
+        return 0
+    if operation in ("terminal", "settings", "setup"):
+        if operation == "terminal":
+            from chameleon.terminal.app import main as gui
+        else:
+            from chameleon.setup.app import main as gui
+        return gui([operation])
+    if operation in ("status", "doctor"):
+        from chameleon.setup.doctor import diagnose
+
+        results = await diagnose(root, config)
+        human("Chameleon Doctor\n")
+        for item in results:
+            human(f"[{'OK' if item.ok else 'FAIL'}] {item.name}: {item.detail}")
+        return 0 if all(r.ok for r in results) else 1
+    if operation != "ai":
+        human("Operación desconocida. Ejecuta chameleon --help.")
+        return 2
+    request = " ".join(args.request).strip()
+    if not request:
+        human("Escribe una petición después de chameleon ai.")
+        return 2
+    shell: ShellName = "cmd" if args.emit == "cmd" else "powershell"
+    shell = args.shell or shell
+    store = SessionStore(root, args.session)
+    cwd = Path(args.cwd or os.getcwd()).resolve()
+    ctx = build_context(cwd, shell, store.recent())
+    engine = Engine(config)
+    for _ in range(4):
+        plan, assessment = await engine.plan(request, ctx)
+        if plan.intent != "clarify":
+            break
+        human(plan.summary)
+        for index, choice in enumerate(plan.choices, 1):
+            human(f"[{index}] {choice}")
+        answer = ask("Aclara tu petición (Enter cancela):")
+        if not answer:
+            return 1
+        if answer.isdigit() and 1 <= int(answer) <= len(plan.choices):
+            answer = plan.choices[int(answer) - 1]
+        request = request + "; aclaración: " + answer
+        if plan.choices and answer in plan.choices:
+            request = (
+                "elimina " + answer
+                if request.casefold().startswith(("borra", "elimina", "delete", "remove"))
+                else "ve a " + answer
+            )
+        ctx.recent.append(plan.summary)
+    else:
+        human("Demasiadas aclaraciones. No se ejecutó nada.")
+        return 1
+    if plan.intent != "execute":
+        human(plan.summary)
+        return 0 if plan.intent == "explain" else 1
+    adapter = CmdAdapter() if shell == "cmd" else PowerShellAdapter()
+    commands = [adapter.render(action, cwd) for action in plan.actions]
+    if assessment.level == Risk.BLOCKED:
+        human("Bloqueado: " + assessment.reason)
+        return 1
+    if (
+        args.show
+        or args.dry_run
+        or config.ai.show_generated_commands
+        or assessment.level == Risk.CONFIRM
+    ):
+        human(plan.summary + "\n\nComando:\n" + "\n".join(commands))
+    if args.dry_run:
+        return 0
+    if assessment.level == Risk.CONFIRM:
+        answer = ask(
+            "Chameleon necesita confirmación\nRiesgo: " + assessment.reason + "\n¿Ejecutar? [y/N]"
+        )
+        if answer.casefold() not in ("y", "yes", "s", "si", "sí"):
+            human("Cancelado.")
+            return 1
+    if not args.emit:
+        human(
+            "Para cambiar el shell actual utiliza el wrapper instalado. Ejecuta Chameleon Setup.\nPuedes revisar con --dry-run."
+        )
+        return 2
+    store.remember(request + " → " + plan.summary)
+    if config.privacy.save_ai_history:
+        history = root / "history"
+        history.mkdir(exist_ok=True)
+        with (history / "ai.jsonl").open("a", encoding="utf-8") as stream:
+            stream.write(
+                json.dumps(
+                    {"request": redact(request), "summary": redact(plan.summary)},
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    if args.emit == "cmd":
+        token = emit_cmd(plan, cwd, root)
+        if args.response:
+            response = Path(args.response).resolve()
+            expected = (root / "runtime" / "actions").resolve()
+            if response.parent != expected or response.suffix != ".response":
+                raise ValueError("Destino de protocolo inválido")
+            with response.open("x", encoding="ascii") as stream:
+                stream.write(token + "\n")
+        else:
+            print(token)
+    else:
+        print(plan.model_dump_json())
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    if isinstance(sys.stdout, TextIOWrapper) and isinstance(sys.stderr, TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(description="Chameleon AI local", add_help=False)
+    parser.add_argument("--help", "-h", action="store_true")
+    parser.add_argument("--emit", choices=("cmd", "powershell"))
+    parser.add_argument("--response")
+    parser.add_argument("--encoded")
+    parser.add_argument("--shell", choices=("cmd", "powershell", "pwsh"))
+    parser.add_argument("--session", type=int)
+    parser.add_argument("--cwd")
+    parser.add_argument("--show", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("operation", nargs="?")
+    parser.add_argument("request", nargs="*")
+    try:
+        args = parser.parse_intermixed_args(argv)
+        if args.help:
+            args.operation = "help"
+        return asyncio.run(run(args))
+    except KeyboardInterrupt:
+        human("Cancelado.")
+        return 130
+    except (ProviderError, ValueError, OSError) as exc:
+        human(str(exc))
+        return 1
+    except Exception:
+        logging.getLogger("chameleon").exception("Internal failure")
+        if "--debug" in (argv or sys.argv[1:]):
+            raise
+        human('Chameleon encontró un error. Ejecuta "chameleon doctor"; consulta los logs locales.')
+        return 1

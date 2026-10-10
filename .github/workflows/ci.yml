@@ -1,0 +1,46 @@
+name: Windows quality and build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+          architecture: x64
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencies
+        run: |
+          python -m venv .venv
+          .venv/Scripts/python -m pip install -r requirements.lock
+          .venv/Scripts/python -m pip install -e . --no-deps
+      - name: Lint
+        run: .venv/Scripts/python -m ruff check src tests scripts installer/entry.py installer/bootstrap.py
+      - name: Types
+        run: .venv/Scripts/python -m mypy src
+      - name: Tests including real CMD, PowerShell and ConPTY
+        run: .venv/Scripts/python -m pytest -m 'not ollama' --junitxml=artifacts/tests.xml
+      - name: Build
+        run: ./scripts/build.ps1 -SkipTests
+      - name: Frozen evidence
+        run: Get-Content artifacts/frozen/results.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ChameleonAI-windows-x64
+          path: |
+            dist/ChameleonSetup.exe
+            dist/ChameleonAI-0.1.0-windows-x64.zip
+            dist/ChameleonAI-0.1.0-source.zip
+            dist/SHA256SUMS.json
+            artifacts/tests.xml
+            artifacts/frozen/results.json
+          retention-days: 14
