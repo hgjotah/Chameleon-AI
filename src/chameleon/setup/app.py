@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -52,7 +53,7 @@ class SetupWindow(QMainWindow):
         self.busy = False
         self.setWindowTitle("Chameleon Setup")
         self.resize(1100, 820)
-        self.setMinimumSize(1000, 760)
+        self.setMinimumSize(900, 620)
         body = QWidget()
         self.setCentralWidget(body)
         outer = QHBoxLayout(body)
@@ -130,7 +131,7 @@ class SetupWindow(QMainWindow):
         self.ollama.setToolTip("Solo con tu consentimiento. Descarga de ollama.com con firma verificada.")
         self.ollama.setChecked(False)
         choices.addWidget(self.ollama)
-        self.model = QCheckBox("Descargar Qwen si falta y comprobar la IA local")
+        self.model = QCheckBox("Preparar IA: Ollama + Qwen y prueba real")
         self.model.setChecked(True)
         choices.addWidget(self.model)
         size = QLabel("     ~2,5 GB · se reutiliza el modelo si ya está instalado")
@@ -148,6 +149,10 @@ class SetupWindow(QMainWindow):
             pass
         choices.addWidget(self.desktop)
         right.addWidget(options)
+        self.dependencies = QLabel("Comprobando componentes instalados…")
+        self.dependencies.setWordWrap(True)
+        self.dependencies.setObjectName("muted")
+        right.addWidget(self.dependencies)
         status_row = QHBoxLayout()
         self.state = StatusPill()
         self.state.set_state("Preparado", "#81e3bc")
@@ -184,8 +189,22 @@ class SetupWindow(QMainWindow):
         self.signals.progress.connect(self.on_progress)
         self.signals.done.connect(self.finished)
         self.signals.failed.connect(self.failed)
-        self.log.appendPlainText("Todo preparado para empezar.\nQwen se comprueba con una inferencia real antes de dar la IA por lista.")
-        outer.addLayout(right, 1)
+        self.log.appendPlainText("Qwen ocupa ~2,5 GB y se descarga durante la instalación si falta.\nLa IA se marca lista después de una respuesta real de Ollama.")
+        QTimer.singleShot(0, self.check_dependencies)
+        right_body = QWidget()
+        # Keep actions visible even when a small screen needs content scrolling.
+        right.removeItem(action_row)
+        right.removeWidget(settings)
+        right_body.setLayout(right)
+        scroll = QScrollArea()
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(right_body)
+        right_pane = QVBoxLayout()
+        right_pane.addWidget(scroll, 1)
+        right_pane.addLayout(action_row)
+        right_pane.addWidget(settings)
+        outer.addLayout(right_pane, 1)
         effect = QGraphicsOpacityEffect(rail)
         rail.setGraphicsEffect(effect)
         self.entrance = QPropertyAnimation(effect, b"opacity", self)
@@ -199,15 +218,30 @@ class SetupWindow(QMainWindow):
 
     def on_progress(self, message: str) -> None:
         self.log.appendPlainText(message)
+        if message.startswith("COMPONENTES:"):
+            self.dependencies.setText(message.removeprefix("COMPONENTES: "))
+            return
         phase = 2 if any(word in message for word in ("inferencia", "inference", "Qwen")) else 1 if any(word in message for word in ("Ollama", "download", "descarg")) else 0
         for index, heading in enumerate(self.steps):
             heading.setStyleSheet("font-weight:600;color:" + ("#86e5b9" if index <= phase else "#678c88"))
         if self.busy:
-            self.progress.setRange(0, 100)
+            import re
+            percent = re.search(r"(\d+)%", message)
             self.progress_animation.stop()
-            self.progress_animation.setStartValue(self.progress.value())
-            self.progress_animation.setEndValue((25, 60, 85)[phase])
-            self.progress_animation.start()
+            self.progress.setRange(0, 100 if percent else 0)
+            if percent:
+                self.progress.setValue(min(100, int(percent[1])))
+
+    def check_dependencies(self) -> None:
+        import asyncio
+
+        from chameleon.llm.ollama import OllamaProvider
+        config, _ = load_config(self.root)
+        executable = ollama_executable()
+        def worker() -> None:
+            online, model = asyncio.run(OllamaProvider(config.ai).status())
+            self.signals.progress.emit("COMPONENTES: Ollama " + ("instalado" if executable else "sin ejecutable local") + " · servicio " + ("activo" if online else "detenido") + " · " + config.ai.model + (" descargado" if model else " pendiente de comprobar/descargar"))
+        threading.Thread(target=worker, daemon=True, name="Dependency check").start()
 
     def open_terminal(self) -> None:
         executable = self.root / "core" / "ChameleonTerminal.exe"
@@ -229,18 +263,19 @@ class SetupWindow(QMainWindow):
             self.policy.isChecked(),
             self.desktop.isChecked(),
         )
-        if allow_ollama and not ollama_executable():
+        if (allow_ollama or pull) and not ollama_executable():
             if (
                 QMessageBox.question(
                     self,
                     "Software externo",
-                    "¿Instalar Ollama desde ollama.com con firma verificada?",
+                    "Para preparar la IA falta Ollama. ¿Instalarlo desde ollama.com con firma verificada y descargar Qwen (~2,5 GB) si falta?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
                 )
                 != QMessageBox.StandardButton.Yes
             ):
                 return
+            allow_ollama = True
         if policy:
             if (
                 QMessageBox.question(
@@ -284,6 +319,7 @@ class SetupWindow(QMainWindow):
         self.progress.setRange(0, 1)
         self.progress.setValue(1)
         self.log.appendPlainText(message)
+        self.check_dependencies()
         self.state.set_state("IA pendiente" if "necesita atención" in message else "Instalación completada", "#e6c275" if "necesita atención" in message else "#81e3bc")
         for option in (self.ollama, self.model, self.policy, self.desktop):
             option.setEnabled(True)

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 · 2026-10-11
+
+- Integración Ollama con streaming, progreso real de recepción y rechazo de respuestas interrumpidas o truncadas; cancelación conserva el control del terminal.
+- Inicio automático del servidor local cuando Ollama ya está instalado pero detenido; se comprueba el puerto antes de lanzar otro servidor.
+- Hilos de CPU configurables (4 por defecto), eliminación del esquema duplicado en el prompt y respuestas breves para reducir el tiempo de inferencia.
+- Resúmenes con ruta explícita: lectura real previa y una sola llamada al modelo; las consultas ambiguas mantienen el flujo de inspección.
+- Operaciones simples forzadas a Qwen limitan el esquema a la acción correspondiente, evitando comandos inexistentes como `create`.
+- Las consultas directas de archivos/procesos generan salida nativa; cualquier otra inspección entra en la fase de respuesta, también con frases fuera de las reglas iniciales.
+- Setup muestra el ejecutable de Ollama, el servidor y el modelo por separado; preparar IA instala el backend ausente con consentimiento, descarga el modelo y exige una inferencia real.
+- Porcentajes de descarga reales, panel de opciones desplazable y diagnóstico del ejecutable de Ollama; los errores de descarga no ocultan que el terminal ya está instalado.
+- Instalación por CLI con opciones explícitas para Ollama/modelo y código de salida 3 cuando queda IA pendiente.
+- Nueva imagen exacta aportada por el usuario en todas las superficies, iconos y accesos directos; lanzadores utilizan el runtime independiente cuando está construido.
+- Puente Qt registrado antes de cargar el renderizador: elimina el registro tardío y la recarga inicial; el lector del terminal espera al cliente preparado.
+
 ## 0.3.0 · 2026-10-11
 
 - Logo aportado por el usuario: PNG original en Terminal, Setup, Settings, bootstrap, iconos Windows y accesos directos.

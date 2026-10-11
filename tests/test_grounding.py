@@ -193,3 +193,55 @@ def test_forced_model_bypasses_local_rule(tmp_path: Path) -> None:
         )
     )
     assert len(calls) == 1 and plan.trace.source == "qwen"
+
+
+def test_explicit_summary_reads_target_before_single_model_call(tmp_path: Path) -> None:
+    (tmp_path / "registro.txt").write_text("Contador real 713.", encoding="utf-8")
+    calls=[]
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/show":
+            return httpx.Response(200,json={"model_info":{"general.architecture":"qwen3"}})
+        body=json.loads(request.content)
+        calls.append(body)
+        evidence=json.loads(body["messages"][1]["content"])["context"]["evidence"]
+        assert evidence[0]["ok"] and "713" in evidence[0]["content"]
+        assert "actions" not in body["format"]["properties"]
+        return httpx.Response(200,json={"message":{"content":'{"intent":"explain","summary":"El contador es 713."}'},"eval_count":15})
+    cfg=Config()
+    plan,_=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan("Resume registro.txt",Context(cwd=str(tmp_path))))
+    assert len(calls)==1 and plan.trace.inspections==1 and "713" in plan.summary
+
+
+def test_forced_creation_schema_has_no_shell_command_variant(tmp_path: Path) -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/show":
+            return httpx.Response(200,json={"model_info":{"general.architecture":"qwen3"}})
+        body=json.loads(request.content)
+        assert body["format"]["$defs"]["Action"]["properties"]["kind"]["const"]=="create"
+        return httpx.Response(200,json={"message":{"content":Plan(intent="execute",shell="cmd",summary="Ya creado",actions=[Action(kind="create",path="saludo.txt",content="Hola")]).model_dump_json()}})
+    cfg=Config()
+    cfg.ai.prefer_model=True
+    plan,risk=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan('crea un archivo llamado saludo.txt con contenido "Hola"',Context(cwd=str(tmp_path))))
+    assert risk.level==Risk.CONFIRM and "pendientes" in plan.summary
+    assert not (tmp_path/'saludo.txt').exists()
+
+
+def test_unrecognized_query_wording_closes_inspection_round(tmp_path: Path) -> None:
+    (tmp_path/'registro.txt').write_text('El contador real es 713.',encoding='utf-8')
+    calls=[]
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path=='/api/show':
+            return httpx.Response(200,json={'model_info':{'general.architecture':'qwen3'}})
+        body=json.loads(request.content)
+        calls.append(body)
+        if len(calls)==1:
+            content=Plan(intent='inspect',shell='cmd',summary='Leer datos',actions=[Action(kind='read',path='registro.txt')]).model_dump_json()
+        else:
+            assert 'actions' not in body['format']['properties']
+            evidence=json.loads(body['messages'][1]['content'])['context']['evidence']
+            assert evidence[0]['ok'] and '713' in evidence[0]['content']
+            content='{"intent":"explain","summary":"El contador observado es 713."}'
+        return httpx.Response(200,json={'message':{'content':content},'eval_count':15})
+    cfg=Config()
+    plan,_=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan('Describe registro.txt',Context(cwd=str(tmp_path))))
+    assert len(calls)==2 and plan.trace.inspections==1 and '713' in plan.summary

@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from chameleon.terminal.window import TerminalWindow
 
 
-def attach_smoke(app: QApplication, window: TerminalWindow, output: Path) -> None:
+def attach_smoke(app: QApplication, window: TerminalWindow, output: Path, with_ai: bool = False) -> None:
     output.mkdir(parents=True, exist_ok=True)
     start = time.monotonic()
     stage = 0
@@ -34,7 +34,7 @@ def attach_smoke(app: QApplication, window: TerminalWindow, output: Path) -> Non
 
     def tick() -> None:
         nonlocal stage, target, confirmations
-        if time.monotonic() - start > 30:
+        if time.monotonic() - start > (120 if with_ai else 30):
             results.append("Timeout stage " + str(stage))
             finish(False)
             return
@@ -68,7 +68,20 @@ def attach_smoke(app: QApplication, window: TerminalWindow, output: Path) -> Non
                 finish(False)
                 return
             results.append("Natural creation: confirmation, Unicode path and literal content")
+            if with_ai:
+                (target / "registro.txt").write_text("El contador real de piezas es 713.", encoding="utf-8")
+                enter("Resume registro.txt e indica el contador real.")
+                stage = 5
+                return
             window.resize(1200, 740)
+            stage = 3
+            QTimer.singleShot(400, lambda: finish(True))
+        elif stage == 5 and session.at_prompt and not session.busy and "713" in window.answer_label.text() and "Ollama" in window.source_label.text():
+            results.append("Actual Qwen answer grounded in read file; terminal input released")
+            enter("echo AFTER_QWEN_OK")
+            stage = 6
+        elif stage == 6 and session.at_prompt and "AFTER_QWEN_OK\r\n" in session.tail:
+            results.append("Native command after actual model response")
             stage = 3
             QTimer.singleShot(400, lambda: finish(True))
 

@@ -37,3 +37,16 @@ def test_source_cli_install_explains_standalone_requirement(tmp_path: Path, monk
     monkeypatch.setattr(sys, "frozen", False, raising=False)
     assert main(["setup", "--install"]) == 1
     assert "ejecutable independiente" in capsys.readouterr().err
+
+
+def test_frozen_cli_explicit_dependency_install_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHAMELEON_HOME",str(tmp_path))
+    monkeypatch.setattr(sys,"frozen",True,raising=False)
+    class TestService:
+        def __init__(self,*args):
+            pass
+        def run(self,options):
+            assert options.allow_ollama and options.pull_model
+            return "Terminal instalado correctamente. La IA necesita atención."
+    monkeypatch.setattr(service,"SetupService",TestService)
+    assert main(["setup","--install","--install-ollama"])==3

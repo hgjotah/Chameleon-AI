@@ -16,7 +16,7 @@ from chameleon.safety.engine import Assessment, Risk, RiskEngine
 class Engine:
     def __init__(self, config: Config, provider: LLMProvider | None = None, progress: Callable[[str], None] | None = None) -> None:
         self.config = config
-        self.provider = provider or OllamaProvider(config.ai)
+        self.provider = provider or OllamaProvider(config.ai, progress=progress)
         self.risk = RiskEngine(strict=config.safety.strict_mode)
         self.progress = progress or (lambda _: None)
 
@@ -30,6 +30,8 @@ class Engine:
                 )
             trace = InferenceTrace(source="qwen")
             context = context.model_copy(deep=True)
+            if local and local.intent == "execute" and len(local.actions) == 1 and local.actions[0].kind in ("create", "mkdir", "copy", "move", "delete", "read", "cd", "clear"):
+                context.action_kind_hint = local.actions[0].kind
             if local and local.intent == "execute":
                 for action in local.actions:
                     if action.path and Path(action.path).exists():
@@ -37,6 +39,15 @@ class Engine:
                         context.evidence.append({"kind": "stat", "path": str(target), "exists": True, "is_file": target.is_file(), "ok": True})
                         trace.inspections += 1
             context.needs_verified_observation = bool(re.search(r"(?:qu[eé] (?:contiene|hay|dice)|cu[aá]ntos?|existe|contenido|contents?|how many|does .+ exist|summari[sz]e|resume|explica|explain).*(?:archivos?|files?|carpeta|folder|\.\w{1,5}\b)|(?:qu[eé] (?:contiene|dice)|contents? of)\b", request, re.I))
+            # A clearly named summary target can be read directly: avoid spending
+            # a model round merely asking it to emit a read of that same file.
+            summary_target = re.match(r'''\s*(?:resume|summari[sz]e)\s+(?:el archivo\s+|the file\s+)?("[^"]+"|'[^']+'|[^\s,;]+\.[\w]{1,5})(?:\s|$)''', request, re.I)
+            if context.needs_verified_observation and summary_target and not self.config.safety.strict_mode:
+                from chameleon.core.schemas import Action
+                target, matches = resolve_reference(summary_target[1], context)
+                if not matches and target.is_file():
+                    context.evidence.append(await asyncio.to_thread(inspect_action, Action(kind="read", path=str(target)), context))
+                    trace.inspections += 1
             try:
                 async with asyncio.timeout(self.config.ai.timeout):
                     for _ in range(3):
@@ -53,6 +64,9 @@ class Engine:
                             break
                         if self.config.safety.strict_mode:
                             raise ProviderError("El modo estricto no permite inspección automática. Usa una consulta explícita para leer el archivo o carpeta.")
+                        # Any tool request enters the observation/answer phase,
+                        # including wording not covered by the initial heuristic.
+                        context.needs_verified_observation = True
                         for action in plan.actions:
                             self.progress("QWEN COMPROBANDO ARCHIVO")
                             result = await asyncio.to_thread(inspect_action, action, context)
@@ -81,6 +95,8 @@ class Engine:
         self.risk = RiskEngine(context.system_directory, strict=self.config.safety.strict_mode)
         if plan.intent == "execute" and any(a.kind == "delete" for a in plan.actions):
             plan.summary = "Propuesta de eliminación: " + "; ".join(a.path for a in plan.actions if a.kind == "delete")
+        elif plan.intent == "execute" and any(a.kind in ("create", "mkdir", "copy", "move") for a in plan.actions):
+            plan.summary = "Cambios propuestos, pendientes de confirmación: " + "; ".join(a.kind + " " + a.path for a in plan.actions)
         assessment = self.risk.assess(plan, Path(context.cwd))
         if assessment.requires_admin and not context.admin:
             assessment = Assessment(

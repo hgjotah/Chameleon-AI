@@ -6,6 +6,7 @@ from pathlib import Path
 from chameleon.core.config import Config
 from chameleon.llm.ollama import OllamaProvider
 from chameleon.platform.windows.system import hidden_run, shell_executable
+from chameleon.setup.ollama_install import ollama_executable
 
 
 @dataclass(frozen=True)
@@ -24,7 +25,7 @@ async def diagnose(root: Path, config: Config) -> list[Check]:
             os.name == "nt" and sys.getwindowsversion().build >= 17763,
             "Windows 10 1809+",
         ),
-        Check("Core", True, "0.3.0"),
+        Check("Core", True, "0.4.0"),
         Check(
             "CMD integration",
             (root / "bin" / "chameleon.cmd").is_file(),
@@ -62,6 +63,7 @@ async def diagnose(root: Path, config: Config) -> list[Check]:
     online, present = await OllamaProvider(config.ai).status()
     checks.extend(
         [
+            Check("Ollama executable", bool(ollama_executable()), ollama_executable() or "Ollama no instalado; Setup → Reparar"),
             Check("Ollama Local API", online, "127.0.0.1:11434"),
             Check(config.ai.model, present, "Modelo local descargado"),
             Check("Runtime", (root / "runtime").is_dir(), "Directorio privado"),

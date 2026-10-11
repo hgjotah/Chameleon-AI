@@ -28,6 +28,7 @@ class Context(BaseModel):
     observed_output: str = ""
     evidence: list[dict] = Field(default_factory=list)
     needs_verified_observation: bool = False
+    action_kind_hint: str = ""
     current_time: str = Field(
         default_factory=lambda: datetime.datetime.now().astimezone().isoformat()
     )

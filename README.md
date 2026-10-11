@@ -20,7 +20,11 @@ chameleon doctor
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
-En **0.3.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+En **0.4.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+
+Setup muestra por separado Ollama instalado, servicio activo y Qwen descargado. Deja marcada **Preparar IA** para comprobar los tres pasos; si falta Ollama solicitará consentimiento antes de descargar su instalador oficial. Espera al resultado de la inferencia real. El terminal puede instalarse aunque la descarga falle, pero Setup indicará **IA pendiente** y permitirá reparar.
+
+Qwen envía progreso mientras genera la respuesta; sólo una respuesta completa y validada puede proponer acciones. En equipos con CPU, **Automático · rápido** evita el modelo para operaciones concretas. `--model` permite verificar una llamada real a Qwen. Los hilos de CPU se ajustan en Ajustes → IA (4 por defecto); la velocidad también depende de RAM y carga del equipo.
 
 ## Instalar y ejecutar
 
@@ -68,8 +72,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.3.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.3.0-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.4.0-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.4.0-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

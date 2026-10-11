@@ -1,5 +1,19 @@
 # Installation, repair and removal
 
+## Preparación de IA en 0.4.0
+
+Setup muestra tres estados diferentes: ejecutable de Ollama instalado, servidor local accesible y modelo descargado. **Preparar IA** solicita consentimiento para instalar Ollama oficial si falta, inicia el servidor, descarga Qwen si falta y verifica una respuesta real. Reutiliza las dependencias presentes. Una descarga interrumpida deja la IA pendiente; vuelve a ejecutar **Reparar**. El porcentaje pertenece a la descarga actual, no a una estimación de toda la instalación.
+
+La instalación silenciosa desde el runtime independiente permite autorizar las dependencias explícitamente:
+
+```powershell
+.\ChameleonCore.exe setup --install --payload . --install-ollama --download-model
+```
+
+Sin esas opciones sólo reutiliza dependencias existentes. El código 3 indica terminal instalado pero IA pendiente; 0 indica preparación completada. Las consultas inician Ollama si ya está instalado y su servidor está detenido; nunca descargan software automáticamente.
+
+Tras instalar, abre CMD desde Inicio en una ventana nueva. Las consolas y aplicaciones abiertas antes de instalar conservan su PATH anterior; si abres pestañas desde Windows Terminal, VS Code u otro host que ya estaba abierto, ciérralo completamente y vuelve a abrirlo. Setup comunica el cambio a Explorer y conserva las otras entradas del PATH del usuario.
+
 Run `ChameleonSetup.exe`. The initial bootstrap extracts only its embedded release into a random temporary directory, starts the PySide installer, waits for exit and removes the temporary payload. The target requires no preinstalled Python.
 
 Install writes `%LOCALAPPDATA%\ChameleonAI\{bin,core,resources,runtime,config,logs}` and an `install.json` ownership manifest. It appends `bin` to the user PATH case-insensitively, sends the Windows Environment change notification, creates Start Menu shortcuts and registers a per-user uninstall entry. No elevation, AutoRun or system PATH modification is used. New terminals load the integration; existing ones keep their previous PATH/profile until restarted.

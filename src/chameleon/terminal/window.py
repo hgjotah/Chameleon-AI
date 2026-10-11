@@ -223,16 +223,19 @@ class TerminalWindow(QMainWindow):
         self.addAction(fullscreen)
         self.session: TerminalSession | None = None
         self.channel = QWebChannel(self.view.page())
+        # Qt requires objects to be registered before the JS client initializes.
+        # The PTY reader starts only at Bridge.ready(), so early output stays
+        # buffered until the single page load has attached its signal handlers.
+        self.start_session()
         self.view.page().setWebChannel(self.channel)
         self.view.loadFinished.connect(self.loaded)
-        # Create the real PTY after the JS channel is initialized, avoiding dropped startup output.
         self.view.setUrl(QUrl.fromLocalFile(str(asset_dir() / "web" / "index.html")))
 
     def loaded(self, ok: bool) -> None:
         if not ok:
             QMessageBox.critical(self, "Chameleon", "No se pudo cargar el renderer local.")
             return
-        self.start_session()
+        self.apply_settings()
 
     def start_session(self) -> None:
         if self.session:
@@ -248,8 +251,6 @@ class TerminalWindow(QMainWindow):
             self.session.location.connect(self.set_location)
             self.session.exited.connect(lambda: self.on_status("SHELL EXITED"))
             self.raw_action.toggled.connect(lambda raw: setattr(self.session, "raw_mode", raw))
-            # Reload once with the registered object; QWebChannel discovers objects at initialization.
-            self.view.reload()
             QTimer.singleShot(300, self.apply_settings)
         except Exception as exc:
             QMessageBox.critical(self, "Chameleon", str(exc))
@@ -389,6 +390,7 @@ class TerminalWindow(QMainWindow):
         self.session.execute(plan, assessment)
 
     def on_failure(self, message: str) -> None:
+        self.source_label.setText("Consulta sin completar · no se ejecutó ninguna acción nueva.")
         self.answer_heading.setText("Necesita atención")
         self.answer_label.setText(message)
         if self.session:

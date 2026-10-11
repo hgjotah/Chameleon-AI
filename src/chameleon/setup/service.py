@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from chameleon.core.config import load_config
 from chameleon.llm.base import ProviderError
 from chameleon.llm.ollama import OllamaProvider
@@ -49,7 +51,7 @@ class SetupService:
             self.progress("⚠ Terminal instalado; no se pudieron verificar las políticas de PowerShell: " + str(exc))
         try:
             ai_ready = self.configure_ai(options, manifest)
-        except (ProviderError, OSError, TimeoutError, subprocess.TimeoutExpired) as exc:
+        except (ProviderError, OSError, TimeoutError, subprocess.TimeoutExpired, httpx.HTTPError) as exc:
             self.progress("⚠ Terminal instalado. IA pendiente: " + str(exc))
             return "Terminal instalado correctamente. La IA necesita atención; consulta el detalle y pulsa Reparar para reintentar. Las acciones locales ya funcionan."
         if not ai_ready:
@@ -95,10 +97,13 @@ class SetupService:
     def configure_ai(self, options: InstallOptions, manifest: dict[str, Any]) -> bool:
         config, _ = load_config(self.root)
         provider = OllamaProvider(config.ai)
+        self.progress("Comprobando Ollama instalado y modelo " + config.ai.model)
         online, present = asyncio.run(provider.status())
         if not online:
             if not ollama_executable() and options.allow_ollama:
                 install_ollama(self.progress)
+                if not ollama_executable():
+                    raise OSError("El instalador terminó pero no se encuentra ollama.exe. No se declara la IA instalada.")
                 manifest["installed_ollama"] = True
                 write_manifest(self.root, manifest)
             if ollama_executable():
@@ -109,11 +114,13 @@ class SetupService:
                 )
         online, present = asyncio.run(provider.status())
         if online and not present and options.pull_model:
+            self.progress("Descargando " + config.ai.model + " (~2,5 GB); espera a la verificación final")
             asyncio.run(provider.pull(self.progress))
             manifest["downloaded_model"] = config.ai.model
             write_manifest(self.root, manifest)
             present = True
         if online and present:
+            self.progress("✓ Modelo local encontrado: " + config.ai.model)
             self.progress("Verificando inferencia estructurada local")
             asyncio.run(provider.probe())
             self.progress("✓ Ollama · Qwen · Local inference")

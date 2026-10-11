@@ -94,10 +94,10 @@ async def run(args: argparse.Namespace) -> int:
                 raise ValueError("Para instalar utiliza el ejecutable independiente ChameleonCore.exe setup --install --payload <carpeta>, o ChameleonSetup.exe.")
             message = await asyncio.to_thread(
                 SetupService(root, payload, human).run,
-                InstallOptions(pull_model=False, desktop=read_manifest(root).get("desktop_shortcut", False)),
+                InstallOptions(allow_ollama=args.install_ollama, pull_model=args.download_model or args.install_ollama, desktop=read_manifest(root).get("desktop_shortcut", False)),
             )
             human(message)
-            return 0
+            return 3 if "necesita atención" in message else 0
         if operation == "terminal":
             from chameleon.terminal.app import main as gui
         else:
@@ -123,7 +123,7 @@ async def run(args: argparse.Namespace) -> int:
     store = SessionStore(root, args.session)
     cwd = Path(args.cwd or os.getcwd()).resolve()
     ctx = build_context(cwd, shell, store.recent())
-    engine = Engine(config)
+    engine = Engine(config, progress=human)
     if args.model:
         config.ai.prefer_model = True
     for _ in range(4):
@@ -220,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--model", action="store_true")
     parser.add_argument("--install", action="store_true")
+    parser.add_argument("--install-ollama", action="store_true")
+    parser.add_argument("--download-model", action="store_true")
     parser.add_argument("--payload")
     parser.add_argument("operation", nargs="?")
     parser.add_argument("request", nargs="*")

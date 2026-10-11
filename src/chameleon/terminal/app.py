@@ -35,5 +35,5 @@ def main(argv: list[str] | None = None) -> int:
 
         from chameleon.terminal.smoke import attach_smoke
 
-        attach_smoke(app, window, Path(args[args.index("--smoke") + 1]))
+        attach_smoke(app, window, Path(args[args.index("--smoke") + 1]), with_ai="--smoke-ai" in args)
     return app.exec()

@@ -65,3 +65,48 @@ def test_failed_ai_probe_does_not_report_core_installation_failure(tmp_path: Pat
     assert "Terminal instalado correctamente" in result
     assert "necesita atención" in result
     assert any("IA pendiente" in event for event in events)
+
+
+def test_fresh_ai_install_performs_every_dependency_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    state = {"binary": False, "online": False, "model": False}
+    calls: list[str] = []
+    class Provider:
+        def __init__(self, config: object) -> None:
+            pass
+        async def status(self) -> tuple[bool, bool]:
+            return state["online"], state["model"]
+        async def pull(self, progress: object) -> None:
+            calls.append("pull")
+            state["model"] = True
+        async def probe(self) -> None:
+            assert state["online"] and state["model"]
+            calls.append("probe")
+    def install(progress: object) -> None:
+        calls.append("install")
+        state["binary"] = True
+    async def start(progress: object) -> None:
+        assert state["binary"]
+        calls.append("start")
+        state["online"] = True
+    monkeypatch.setattr(service, "OllamaProvider", Provider)
+    monkeypatch.setattr(service, "ollama_executable", lambda: "ollama.exe" if state["binary"] else None)
+    monkeypatch.setattr(service, "install_ollama", install)
+    monkeypatch.setattr(service, "ensure_server", start)
+    monkeypatch.setattr(service, "write_manifest", lambda *args: None)
+    manifest: dict = {}
+    ready = SetupService(tmp_path, tmp_path, lambda _: None).configure_ai(InstallOptions(allow_ollama=True), manifest)
+    assert ready and calls == ["install", "start", "pull", "probe"]
+    assert manifest["installed_ollama"] and manifest["downloaded_model"] == "qwen3:4b-instruct"
+
+
+def test_external_installer_success_without_binary_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class OfflineProvider:
+        def __init__(self, config: object) -> None:
+            pass
+        async def status(self) -> tuple[bool, bool]:
+            return False, False
+    monkeypatch.setattr(service, "OllamaProvider", OfflineProvider)
+    monkeypatch.setattr(service, "ollama_executable", lambda: None)
+    monkeypatch.setattr(service, "install_ollama", lambda _: None)
+    with pytest.raises(OSError, match="ollama.exe"):
+        SetupService(tmp_path,tmp_path,lambda _: None).configure_ai(InstallOptions(allow_ollama=True),{})

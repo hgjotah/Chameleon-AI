@@ -19,6 +19,13 @@ def ollama_executable() -> str | None:
 
 
 async def ensure_server(progress: Callable[[str], None]) -> None:
+    async with httpx.AsyncClient(trust_env=False) as client:
+        try:
+            response = await client.get("http://127.0.0.1:11434/api/version", timeout=2)
+            if response.status_code == 200:
+                return
+        except httpx.HTTPError:
+            pass
     executable = ollama_executable()
     if not executable:
         raise OSError(

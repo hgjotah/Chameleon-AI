@@ -31,4 +31,6 @@ $env:CHAMELEON_TEST_OLLAMA = '1'
 
 `setup_smoke.py` copies the actual payload into a temporary home, exercises the Qt worker and real Qwen probe, then removes it. It leaves the operator's PATH/profiles untouched. `frozen_smoke.py` requires the completed build and checks the bundled CLI, wrappers, GUI, installer extraction and removal. Screenshots and machine-readable evidence are written to ignored `artifacts/`.
 
+The frozen terminal also accepts `--smoke <evidence-directory> --smoke-ai` for an actual file-grounded Qwen reply followed by a native command. Use `CHAMELEON_HOME` pointing to an isolated QA home; the diagnostic creates its own files there. Without `--smoke-ai`, it exercises native terminal behavior without inference.
+
 The workflow uses immutable action SHAs verified against official release tags. See [GitHub's secure use reference](https://docs.github.com/en/actions/reference/security/secure-use) when updating these dependencies.

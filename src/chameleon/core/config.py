@@ -36,6 +36,7 @@ class AIConfig(StrictSettings):
     keep_alive: str = "5m"
     show_generated_commands: bool = False
     prefer_model: bool = False
+    num_threads: int = Field(default=4, ge=1, le=64)
 
     @field_validator("model")
     @classmethod

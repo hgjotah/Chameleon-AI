@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix="chameleon-frozen-") as directory:
         env.pop(variable, None)
     checks = []
     version = run([str(root / "core" / "ChameleonCore.exe"), "version"], env, temp)
-    assert "0.3.0" in version
+    assert "0.4.0" in version
     checks.append("Frozen Core version")
     if "--ai" in sys.argv:
         config = Config()

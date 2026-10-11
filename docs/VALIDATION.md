@@ -1,4 +1,33 @@
-# Delivery validation · 0.3.0 · 2026-10-11
+# Delivery validation · 0.4.0 · 2026-10-11
+
+## Current release · 0.4.0
+
+Native PowerShell checks found official Ollama 0.40.2 (valid Ollama Inc. Authenticode signature) and downloaded `qwen3:4b-instruct` in this account. Its digest is `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`, Qwen3 4B Instruct Q4_K_M. This host uses CPU inference (i5-12450H, 16 GB RAM); free RAM during the run was below 1 GB. Presence, API availability and actual generation are separate checks.
+
+| Real model case, sequential run without concurrent builds | Result |
+|---|---|
+| Summarize named file and report actual counter 713 | 10.092 s, one call, 24 output tokens, one actual read |
+| Forced Qwen creation of saludo.txt containing Hola mundo | 21.478 s, one typed create, confirmation required |
+| Forced Qwen delete of Downloads/Prueba with hidden .txt extension | 26.445 s, exact existing file selected, confirmation required; file untouched during planning |
+| Explain environment variable | 13.863 s, one concise explanation, no actions |
+
+The previous implementation took 76.3 s for the equivalent summary in a sequential run. The revised implementation reads an unambiguous named summary target before inference, reduces prompts, constrains simple typed actions and streams progress. No timeout increase was used: these checks used the default 90 seconds. Measurements are specific to this host; CPU, memory pressure, cold loading and request size affect latency. Complex queries can remain slower.
+
+Ruff and mypy (46 source files) passed. The final complete non-model suite passed: **156 passed, 1 skipped, 4 deselected in 44.54 s**, including the query-loop and generic inspection-phase regressions. Both source GUI scenarios also passed eight checks each (CMD and PowerShell), including native REPL input and declined/accepted literal file creation. Four additional real Ollama tests passed in 107.56 s: RAM process query, Python files larger than 1 MB, PDF files modified since a date and an explanation. The initial real-query run exposed `inspect` being returned for direct listing/search requests; their grammar now requires native query execution. Any other typed inspection also enters the observation/answer phase after tools run, preventing repeated inspections for wording outside the initial heuristic.
+
+Coverage includes incomplete/error streams, automatic startup of an installed offline backend, typed creation without an invented command, fresh dependency orchestration (install → start → pull → probe), absent binary after installer exit, and silent-install consent flags with an IA-pending exit code. The fresh-machine external install branch is mocked; this account already has the real dependencies and reuses them.
+
+The new supplied PNG is copied byte for byte, SHA256 `46142cbe7368d81869b931af59da66db526125c2d9410d82360132a7ad34a17f`. ICO sizes are generated from it. Setup percentages represent actual downloads; the component row reports binary/server/model state. Options scroll on smaller screens while install/settings buttons remain visible.
+
+The frozen build passed all 44 module comparisons, exact UI/assets comparisons and standalone embedded payload/logo integrity checks. Ten frozen smoke checks passed, including native shell cwd, Qt/xterm/ConPTY, a missing model, Setup/Settings startup, scale factors 1.25/1.5 and preserved profiles after removal. The real account was then updated through the standalone Core with dependency preparation enabled; it reused official Ollama/Qwen and completed actual structured inference. Doctor reported all 12 checks OK in the verification environment.
+
+An independently frozen controller verified actual installed creation and confirmed hidden-extension deletion in CMD, Windows PowerShell and PowerShell 7. The physical installed Core equals the built Core by SHA256. Original preference values and exact profile bytes were preserved; the new CPU-thread option defaults to 4. The first update retained the exact user PATH. The final snapshot showed an unrelated FFmpeg path update from 9.0 to 9.0.2 and a trailing separator; that current PATH was retained, with the Chameleon entry present. Physical installed PNG and shortcut ICO match the source. Normal shells report 0.4.0. CMD was also checked with a refreshed environment: children of an application opened before installation retain its old process PATH until that host restarts.
+
+Evidence: `artifacts/build04-final.log`, `artifacts/performance04-real.json`, `artifacts/installed-update04.log`, `artifacts/installed-native04.log`, `artifacts/doctor04.log`, and before/after native-account snapshots. Installed GUI checks use dedicated QA homes, default 90-second AI timeout, actual Qwen file summaries, confirmed file creation and a native command after the response. Release packages and hashes are under `dist/`.
+
+Both installed CMD and PowerShell GUI checks passed with actual file summaries and native input after the reply. A test launched with `Start-Process -WindowStyle Hidden` timed out before the renderer/session started; normal GUI launch passed. Qt also reported late object registration. The final startup registers the bridge before loading the JS client and reads PTY output only after `Bridge.ready()`, removing the initial reload in accordance with [Qt's registration requirement](https://doc.qt.io/qt-6/qwebchannel.html#registerObject).
+
+## Previous release · 0.3.0
 
 The current release is verified on this Windows 11 x64 host. Evidence is generated in ignored `artifacts/`; packages are in `dist/`. The detailed 0.2.0 baseline below is retained and explicitly identified as earlier validation.
 
