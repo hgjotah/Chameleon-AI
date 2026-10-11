@@ -35,6 +35,7 @@ class AIConfig(StrictSettings):
     timeout: int = Field(default=90, ge=5, le=600)
     keep_alive: str = "5m"
     show_generated_commands: bool = False
+    prefer_model: bool = False
 
     @field_validator("model")
     @classmethod

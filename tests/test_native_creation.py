@@ -69,6 +69,21 @@ def test_native_wrapper_creates_file_after_real_confirmation(shell_install: Path
             output = ""
             backend.write("chameleon ai " + ps_quote('lee "archivo Niño.txt"') + "\r")
             until("\r\nHola, acción & echo LITERAL\r\n")
+        output = ""
+        # Reproduce the reported folder-before-name phrase and Explorer's
+        # hidden-extension case through the real interactive parent shell.
+        deletion = f'borra un archivo en "{tmp_path}" llamado "archivo Niño"'
+        command = (
+            'call "' + str(shell_install / "bin/chameleon.cmd") + '" ai ' + deletion
+            if shell == "cmd" else "chameleon ai " + ps_quote(deletion)
+        )
+        backend.write(command + "\r")
+        until("¿Ejecutar?")
+        assert (tmp_path / "archivo Niño.txt").is_file()
+        backend.write("s\r")
+        backend.write("echo VERIFIED_LITERAL_DELETION\r")
+        until("\r\nVERIFIED_LITERAL_DELETION\r\n")
+        assert not (tmp_path / "archivo Niño.txt").exists()
     finally:
         backend.close()
         thread.join(timeout=3)

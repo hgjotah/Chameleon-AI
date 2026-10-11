@@ -42,10 +42,22 @@ class Action(BaseModel):
         return self
 
 
+class InferenceTrace(BaseModel):
+    source: Literal["local", "qwen"] = "local"
+    model: str = ""
+    duration_ms: int = 0
+    output_tokens: int = 0
+    calls: int = 0
+    inspections: int = 0
+
+    def label(self) -> str:
+        return "Regla local · sin inferencia" if self.source == "local" else f"Ollama · {self.model} · {self.calls} llamada(s) · {self.output_tokens} tokens · {self.duration_ms / 1000:.1f} s · {self.inspections} inspección(es)"
+
+
 class Plan(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Literal[1] = 1
-    intent: Literal["execute", "clarify", "explain", "error"]
+    intent: Literal["execute", "inspect", "clarify", "explain", "error"]
     shell: ShellName
     actions: list[Action] = Field(default_factory=list, max_length=8)
     summary: str = Field(max_length=2000)
@@ -53,13 +65,16 @@ class Plan(BaseModel):
     model_risk: Literal["safe", "confirm", "blocked"] = "safe"
     requires_admin: bool = False
     choices: list[str] = Field(default_factory=list, max_length=20)
+    trace: InferenceTrace = Field(default_factory=InferenceTrace)
 
     @model_validator(mode="after")
     def consistent(self) -> "Plan":
-        if self.intent == "execute" and not self.actions:
+        if self.intent in ("execute", "inspect") and not self.actions:
             raise ValueError("Execution requires actions")
-        if self.intent != "execute" and self.actions:
+        if self.intent not in ("execute", "inspect") and self.actions:
             raise ValueError("Non-execution plans cannot contain actions")
+        if self.intent == "inspect" and any(a.kind not in ("list", "find", "read", "processes") for a in self.actions):
+            raise ValueError("Inspection supports only read-only typed queries")
         return self
 
 
@@ -69,7 +84,7 @@ def generation_schema() -> dict:
     # The wire protocol restores these defaults after validation. Asking a small
     # model to generate advisory risk flags wastes tokens and suggests authority
     # that only the independent risk engine actually has.
-    for name in ("version", "confidence", "model_risk", "requires_admin"):
+    for name in ("version", "confidence", "model_risk", "requires_admin", "trace"):
         schema["properties"].pop(name)
     schema["properties"]["summary"]["maxLength"] = 240
     schema["properties"]["actions"]["maxItems"] = 4
@@ -103,6 +118,7 @@ def generation_schema() -> dict:
             }
         )
     schema["$defs"]["Action"] = {"anyOf": variants}
+    schema["$defs"].pop("InferenceTrace", None)
 
     def compact(value: object) -> None:
         if isinstance(value, dict):

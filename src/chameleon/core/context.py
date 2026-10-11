@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import platform
 import re
@@ -25,6 +26,8 @@ class Context(BaseModel):
     executables: dict[str, str] = Field(default_factory=dict)
     recent: list[str] = Field(default_factory=list)
     observed_output: str = ""
+    evidence: list[dict] = Field(default_factory=list)
+    needs_verified_observation: bool = False
     current_time: str = Field(
         default_factory=lambda: datetime.datetime.now().astimezone().isoformat()
     )
@@ -39,6 +42,23 @@ class Context(BaseModel):
         data["observed_output"] = redact(visible)[-600:]
         data["recent"] = [redact(item)[:400] for item in self.recent[-4:]]
         data["entries"] = self.entries[:40]
+        data["entries_complete"] = False
+        observations = []
+        budget = 12000
+        for item in reversed(self.evidence[-8:]):
+            observation = dict(item)
+            if "content" in observation and len(observation["content"]) > 6000:
+                observation["content"] = observation["content"][:6000]
+                observation["truncated"] = True
+            if len(observation.get("entries", [])) > 20:
+                observation["entries"] = observation["entries"][:20]
+                observation["complete"] = False
+            size = len(json.dumps(observation, ensure_ascii=False))
+            if size > budget:
+                continue
+            budget -= size
+            observations.append(observation)
+        data["evidence"] = list(reversed(observations))
         data["executables"] = {
             name: path
             for name, path in self.executables.items()

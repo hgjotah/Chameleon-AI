@@ -22,8 +22,8 @@ with tempfile.TemporaryDirectory(prefix="chameleon-setup-qa-") as directory:
 
     # Integration APIs are tested separately with an isolated registry hive. This
     # GUI test must never alter the operator's real PATH, shortcuts or profiles.
-    def isolated_install(target: Path, payload: Path, *, desktop: bool = False) -> None:
-        install(target, payload, profiles=[profile], integrate=False)
+    def isolated_install(target: Path, payload: Path, *, desktop: bool = False, progress=None) -> None:
+        install(target, payload, profiles=[profile], integrate=False, progress=progress)
 
     service.install = isolated_install
     service.profile_paths = lambda: []

@@ -1,5 +1,7 @@
 # Chameleon AI · Chameleon Terminal
 
+<img src="src/chameleon/assets/icons/chameleon.png" alt="Logo Chameleon Terminal" width="140">
+
 Asistente local para **Windows 10 1809+ y Windows 11 x64**, escrito en Python 3.13, con Ollama y `qwen3:4b-instruct`. Convierte español o inglés en acciones validadas que se ejecutan en la sesión actual. Incluye un terminal gráfico de verdad: PySide6, ConPTY y xterm.js local.
 
 ```cmd
@@ -11,12 +13,14 @@ chameleon ai crea una carpeta llamada proyecto
 chameleon ai copia notas.txt a copia.txt
 chameleon ai --dry-run busca archivos Python mayores de 1 MB
 chameleon ai elimina old.txt
+chameleon ai borra un archivo en Downloads llamado Prueba
+chameleon ai --model resume notas.txt
 chameleon doctor
 ```
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
-En **0.2.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+En **0.3.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
 
 ## Instalar y ejecutar
 
@@ -35,6 +39,12 @@ CMD por defecto; abre otra sesión con el selector de shell o **+ Nueva sesión*
 Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; Ctrl+Shift+C/V copia/pega; Ctrl+`+`/`-` cambia fuente; F11 pantalla completa. Las flechas, Tab e historial los gestiona el shell real. El pegado multilínea siempre se envía como entrada directa.
 
 ## IA, privacidad y seguridad
+
+El panel lateral muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
+
+Las respuestas sobre archivos utilizan herramientas internas de lectura, listado, búsqueda y procesos. Qwen recibe resultados comprobados antes de responder. La inspección automática se limita a la carpeta actual y las carpetas conocidas; se acotan datos y tiempo de recorrido, indicando resultados parciales y errores. El modo estricto requiere lectura explícita. La inferencia CPU puede tardar; el estado identifica la consulta real y Ctrl+C la cancela.
+
+El nombre sin extensión se compara con archivos reales de la carpeta indicada. Si hay un solo `Prueba.txt`, «borra Prueba» lo propone; con varios candidatos pide la ruta exacta. Reconoce `Downloads`, `Descargas` y sus subrutas, incluidas carpetas redirigidas de Windows.
 
 Solo se contacta `http://127.0.0.1:11434`, sin proxies ni fallback cloud. Las reglas claras funcionan aunque Ollama esté apagado. xterm.js y todos sus recursos vienen incluidos; después de descargar Ollama y Qwen no se necesita Internet.
 
@@ -58,8 +68,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.2.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.2.0-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.3.0-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.3.0-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

@@ -117,6 +117,7 @@ class SettingsDialog(QDialog):
         field(ai, "ai", "keep_alive", "Mantener cargado (ej. 5m, 0)")
         field(ai, "ai", "timeout", "Timeout (segundos)", bounds=(5, 600))
         field(ai, "ai", "enabled", "Activar IA")
+        field(ai, "ai", "prefer_model", "Usar Qwen incluso para acciones simples")
         terminal = page("Terminal")
         field(terminal, "terminal", "font", "Fuente")
         field(terminal, "terminal", "font_size", "Tamaño", bounds=(8, 40))

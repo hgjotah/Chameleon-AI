@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 · 2026-10-11
+
+- Logo aportado por el usuario: PNG original en Terminal, Setup, Settings, bootstrap, iconos Windows y accesos directos.
+- Borrado «un archivo en Downloads llamado Prueba.txt» y nombres sin extensión; los candidatos ambiguos requieren selección explícita.
+- Subrutas de carpetas conocidas y Descargas redirigidas se resuelven contra sus ubicaciones reales.
+- Inspecciones de solo lectura para fundamentar respuestas en archivos y procesos reales; límites explícitos, redacción de secretos y lectura UTF-16 con BOM.
+- Origen visible con llamadas, tokens, modelo y duración reales; selector Automático/Qwen y opción CLI `--model`.
+- Cierre explícito de la ronda de herramientas y resúmenes acotados para evitar lecturas repetidas y explicaciones largas antes de actuar.
+- Setup y Terminal rediseñados con panel de respuesta, jerarquía tipográfica, tarjetas, controles y transiciones; apertura del terminal tras instalar.
+- Actualización por usuario desde el Core congelado conservando preferencias, perfiles y PATH.
+- Permisos del runtime aplicados antes de crear staging y backup, evitando el timeout encontrado en una actualización real; error de permisos con diagnóstico específico.
+
 ## 0.2.0 · 2026-10-10
 
 - Creación literal de archivos UTF-8 y carpetas; copia y movimiento sin sobrescritura, compartidos por CMD, PowerShell y GUI. Lectura UTF-8 explícita también en PowerShell 5.1.

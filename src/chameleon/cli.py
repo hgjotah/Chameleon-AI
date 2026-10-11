@@ -79,13 +79,25 @@ async def run(args: argparse.Namespace) -> int:
         human(
             f"Chameleon AI {__version__}"
             + (
-                "\nUso: chameleon ai [--show] [--dry-run] <petición>\n     chameleon status | doctor | version | terminal | settings | setup"
+                "\nUso: chameleon ai [--show] [--dry-run] [--model] <petición>\n     chameleon status | doctor | version | terminal | settings | setup"
                 if operation == "help"
                 else ""
             )
         )
         return 0
     if operation in ("terminal", "settings", "setup"):
+        if operation == "setup" and args.install:
+            from chameleon.platform.windows.installer import read_manifest
+            from chameleon.setup.service import InstallOptions, SetupService
+            payload = Path(args.payload) if args.payload else Path(sys.executable).parent
+            if not getattr(sys, "frozen", False):
+                raise ValueError("Para instalar utiliza el ejecutable independiente ChameleonCore.exe setup --install --payload <carpeta>, o ChameleonSetup.exe.")
+            message = await asyncio.to_thread(
+                SetupService(root, payload, human).run,
+                InstallOptions(pull_model=False, desktop=read_manifest(root).get("desktop_shortcut", False)),
+            )
+            human(message)
+            return 0
         if operation == "terminal":
             from chameleon.terminal.app import main as gui
         else:
@@ -112,6 +124,8 @@ async def run(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd or os.getcwd()).resolve()
     ctx = build_context(cwd, shell, store.recent())
     engine = Engine(config)
+    if args.model:
+        config.ai.prefer_model = True
     for _ in range(4):
         plan, assessment = await engine.plan(request, ctx)
         if plan.intent != "clarify":
@@ -129,6 +143,7 @@ async def run(args: argparse.Namespace) -> int:
     else:
         human("Demasiadas aclaraciones. No se ejecutó nada.")
         return 1
+    human("Origen: " + plan.trace.label())
     if plan.intent != "execute":
         human(plan.summary)
         return 0 if plan.intent == "explain" else 1
@@ -203,6 +218,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--model", action="store_true")
+    parser.add_argument("--install", action="store_true")
+    parser.add_argument("--payload")
     parser.add_argument("operation", nargs="?")
     parser.add_argument("request", nargs="*")
     try:

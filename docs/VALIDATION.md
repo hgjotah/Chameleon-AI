@@ -1,4 +1,35 @@
-# Delivery validation · 0.2.0 · 2026-10-10
+# Delivery validation · 0.3.0 · 2026-10-11
+
+The current release is verified on this Windows 11 x64 host. Evidence is generated in ignored `artifacts/`; packages are in `dist/`. The detailed 0.2.0 baseline below is retained and explicitly identified as earlier validation.
+
+| Current check | Observed result |
+|---|---|
+| Ruff / mypy | All checks pass; 46 source files type-check |
+| Full non-model suite | 137 passed, 1 skipped, 4 model tests deselected in 140.24 seconds, with other QA running |
+| Final focused regressions | 84 passed, including UTF-16, hidden extensions, literal paths containing Spanish prepositions, native confirmed deletion and two CLI update checks. 143 distinct non-model tests verified across full/focused runs |
+| Reported deletion | Seven Spanish/English variants resolve actual temporary `Prueba.txt`; omitted extensions work for one exact stem, ambiguous candidates require clarification |
+| Known folder prefixes | `Downloads/Prueba.txt`, `Descargas\Prueba` and redirected Downloads resolve to actual known-directory locations |
+| Native confirmation | CMD, PowerShell 5.1 and PowerShell 7 create a literal Unicode file after confirmation, then delete that temporary file using the folder-before-name phrase with the extension omitted |
+| Qwen identity | Real local metadata reports Qwen3-4B-Instruct-2507 / Q4_K_M; observed inference accepts only `127.0.0.1`; no substituted model |
+| Forced-Qwen deletion | One actual chat call, 107 output tokens, 67.14 seconds under QA load; correct temporary Downloads path, CONFIRM and file retained (`artifacts/qwen03-real.json`) |
+| Grounded actual answer | Qwen requests a typed read, Engine reads actual `registro.txt`, Qwen answers with counter **713**; two calls, 80 output tokens, 51.20 seconds, one inspection and no writes |
+| Grounding regression checks | Fabricated file-state answer rejected, writes/out-of-scope inspection rejected, partial listings/secrets tested, UTF-16 BOM and hidden-extension read verified |
+| Source GUI | Eight actual Qt/xterm/ConPTY checks each in CMD and PowerShell, including native prompt, navigation, REPL isolation and declined/confirmed literal creation |
+| Supplied logo | Project PNG is byte-identical to the user's attachment; SHA256 `e8485698940521545fba7d71e0943212bd741fc7c698e45290a22f2a293e78c9`. ICO sizes derive from this image; preview screenshots display it |
+| Final installer regression | 14 focused installer/service/CLI tests pass after moving runtime ACL setup before staging/backup; actual account update then completes with all Doctor checks OK |
+| Frozen distribution | 44 packaged code modules and every asset match source; embedded payload and supplied bootstrap PNG match exactly; all 10 frozen executable/renderer/installer checks pass |
+| Frozen Core Qwen | Actual read-and-answer returns counter 713 with two model calls and one inspection; 111 tokens / 115.3 seconds during concurrent build, with the isolated QA timeout raised to 180 seconds (`artifacts/frozen-grounding03.json`) |
+| Actual user update | 0.3.0 installed; all original preferences, profile bytes and user PATH preserved; installed PNG/ICO match source; Start Menu shortcuts use the new icon. Independently frozen native QA confirms creation and hidden-extension deletion in CMD, PowerShell 5.1 and PowerShell 7 (`artifacts/installed-update03.json`) |
+
+The initial grounded run exposed repeated reads and verbose inspection summaries. The answer phase now closes the tool round explicitly, and the inspection summary is fixed and short. The same actual read-and-answer case dropped from 369 tokens / 188 seconds to 80 tokens / 51 seconds in the observed CPU runs. These are host measurements, not universal response-time guarantees. Default concrete local operations avoid inference; forced Qwen remains slower on CPU. Ctrl+C cancels a pending request.
+
+Current distribution evidence is recorded in `artifacts/build03-final.log`, `artifacts/frozen/results.json` and `artifacts/installed-update03.json`; release hashes are in `dist/SHA256SUMS.json`. The build requires source/asset integrity, exact embedded payload/logo checks and actual executable smoke checks before packaging. Qt Essentials lacks an SVG image plugin, so the checkbox glyph uses PNG; the supplied logo remains untouched.
+
+## Earlier validation · 0.2.0 · 2026-10-10
+
+The actual update exposed an ACL timeout caused by applying inheritable permissions after adding the full runtime backup. The previous installation was recovered with unchanged profiles/PATH. The final installer secures the small actions/session tree before adding staging or backup, bounds ACL setup at 60 seconds and reports a specific timeout error. The subsequent actual update completed.
+
+Actual-account QA must use a native frozen process: Microsoft Store Python can expose an older redirected runtime when launching child shells against AppData. A source-driven QA attempt encountered that older copy; the original configuration was recovered and all checks were repeated from an independently frozen controller. Normal fresh CMD and both PowerShell versions report the installed 0.3.0. The old private cache copy is preserved as a recovery backup; it is not distributed.
 
 Executed on Windows 11 x64 (build 26200), Python 3.13.14, Windows PowerShell 5.1.26100.9444 and PowerShell 7.6.5. Dependencies and npm resources are pinned, including pywinpty 3.0.5 with its event-driven ConPTY teardown fix ([official release notes](https://github.com/andfoy/pywinpty/releases/tag/v3.0.5)). Evidence is generated under ignored `artifacts/`; source and distribution files are under Git and `dist/` respectively.
 

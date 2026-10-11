@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from collections.abc import Callable
 
 import httpx
@@ -8,7 +9,7 @@ from pydantic import ValidationError
 from chameleon.core.config import AIConfig
 from chameleon.core.context import Context
 from chameleon.core.privacy import redact
-from chameleon.core.schemas import Plan, generation_schema
+from chameleon.core.schemas import InferenceTrace, Plan, generation_schema
 from chameleon.llm.base import LLMProvider, ProviderError
 from chameleon.llm.prompts import SYSTEM_PROMPT
 
@@ -35,7 +36,20 @@ class OllamaProvider(LLMProvider):
         # Route unmistakable file-query requests to a smaller action grammar. The
         # model still interprets the paths, patterns, sizes and dates; it cannot
         # silently replace a file query with an unrelated process operation.
-        if re.match(r"\s*(?:busca|encuentra|find|search|locate)\b", request, re.I) and re.search(
+        if context.needs_verified_observation:
+            schema["properties"]["summary"] = {"type": "string", "const": "Consulta de datos reales."}
+            schema["properties"]["intent"] = {"enum": ["inspect", "clarify", "error"], "type": "string"}
+            schema["$defs"]["Action"]["anyOf"] = [v for v in schema["$defs"]["Action"]["anyOf"] if v["properties"]["kind"]["const"] in ("read", "list", "find", "processes")]
+            schema["properties"]["actions"]["maxItems"] = 1
+            if re.search(r"\b(?:resume|summari[sz]e|contenido|contents?|contiene|dice)\b", request, re.I) and re.search(r"\.[\w]{1,5}\b", request):
+                schema["$defs"]["Action"] = next(
+                    v for v in schema["$defs"]["Action"]["anyOf"] if v["properties"]["kind"]["const"] == "read"
+                )
+        elif re.match(r"\s*(?:borra|borrar|elimina|eliminar|delete|remove)\b", request, re.I) and not re.search(r"\s(?:y|and|then|despu[eé]s)\s", request, re.I):
+            schema["properties"]["summary"] = {"type": "string", "maxLength": 120}
+            schema["$defs"]["Action"]["anyOf"] = [v for v in schema["$defs"]["Action"]["anyOf"] if v["properties"]["kind"]["const"] in ("delete", "list", "find")]
+            schema["properties"]["actions"]["maxItems"] = 1
+        elif re.match(r"\s*(?:busca|encuentra|find|search|locate)\b", request, re.I) and re.search(
             r"\b(?:archivos?|files?|pdf|pdfs)\b", request, re.I
         ):
             variants = schema["$defs"]["Action"]["anyOf"]
@@ -45,25 +59,39 @@ class OllamaProvider(LLMProvider):
         elif re.match(r"\s*(?:muestra|muestrame|muéstrame|lista|show|list|dime)\b", request, re.I) and re.search(r"\b(?:procesos|processes)\b", request, re.I):
             schema["$defs"]["Action"] = next(variant for variant in schema["$defs"]["Action"]["anyOf"] if variant["properties"]["kind"]["const"] == "processes")
         elif re.match(r"\s*(?:explain|explica|what is|qu[eé] es)\b", request, re.I):
-            schema["properties"]["intent"] = {"const": "explain", "type": "string"}
-            schema["properties"]["actions"] = {"type": "array", "items": {}, "maxItems": 0}
+            schema["properties"]["intent"] = {"enum": ["explain", "inspect", "clarify", "error"], "type": "string"}
+            schema["$defs"]["Action"]["anyOf"] = [v for v in schema["$defs"]["Action"]["anyOf"] if v["properties"]["kind"]["const"] in ("read", "list", "find", "processes")]
+        inspected = context.needs_verified_observation and any(
+            item.get("kind") in ("read", "list", "find", "processes")
+            for item in context.evidence
+        )
+        phase = ""
+        if inspected:
+            schema["properties"]["summary"] = {"type": "string", "maxLength": 360}
+            # Close the tool round explicitly. Repeating the original request
+            # without this phase let the model request the same read repeatedly.
+            schema["properties"]["intent"] = {"enum": ["explain", "clarify", "error"], "type": "string"}
+            schema["properties"].pop("actions")
+            schema["properties"].pop("choices")
+            schema["required"] = list(schema["properties"])
             schema.pop("$defs", None)
+            phase = "\nThe read-only tools have ALREADY RUN. Answer the request using context.evidence now, in the user's language, in one or two concise sentences. Do not request the same inspection again or explain policies. Report failed or partial observations honestly. Output only intent, shell and summary; no actions or choices."
         messages = [
             {
                 "role": "system",
-                "content": SYSTEM_PROMPT + "\nRequired JSON schema:\n" + json.dumps(schema, separators=(",", ":")),
+                "content": SYSTEM_PROMPT + phase + "\nRequired JSON schema:\n" + json.dumps(schema, separators=(",", ":")),
             },
             {
                 "role": "user",
-                "content": redact(
-                    json.dumps(
-                        {"request": request[:8000], "context": context.model_payload(request)},
+                "content": json.dumps(
+                        {"request": redact(request[:8000]), "context": context.model_payload(request)},
                         ensure_ascii=False,
                         separators=(",", ":"),
-                    )
                 ),
             },
         ]
+        total_tokens = 0
+        total_ms = 0
         async with self.client() as client:
             for attempt in range(2):
                 if attempt == 0:
@@ -87,6 +115,7 @@ class OllamaProvider(LLMProvider):
                         ) from exc
                 content = ""
                 try:
+                    started = time.monotonic()
                     response = await client.post(
                         "/api/chat",
                         json={
@@ -96,14 +125,20 @@ class OllamaProvider(LLMProvider):
                             "format": schema,
                             "think": False,
                             "keep_alive": self.config.keep_alive,
-                            "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 768},
+                            "options": {"temperature": 0, "num_ctx": 8192 if len(json.dumps(context.evidence)) > 5000 else 4096, "num_predict": 512},
                         },
                     )
                     response.raise_for_status()
-                    content = response.json()["message"]["content"]
+                    total_ms += int((time.monotonic() - started) * 1000)
+                    payload = response.json()
+                    total_tokens += int(payload.get("eval_count", 0))
+                    if payload.get("error") or payload.get("done_reason") == "length":
+                        raise ProviderError("Ollama devolvió un error o una respuesta truncada. No se ejecutó nada.")
+                    content = payload["message"]["content"]
                     plan = Plan.model_validate_json(content)
                     if plan.shell != context.shell:
                         raise ValueError("Wrong target shell")
+                    plan.trace = InferenceTrace(source="qwen", model=payload.get("model", self.config.model), duration_ms=total_ms, output_tokens=total_tokens, calls=attempt + 1)
                     return plan
                 except (ValidationError, ValueError, KeyError) as exc:
                     if attempt == 0:
@@ -119,8 +154,8 @@ class OllamaProvider(LLMProvider):
                                 "role": "user",
                                 "content": "Correct the previous JSON. Validation errors: "
                                 + errors[:2000]
-                                + ". An execute intent MUST contain at least one typed action. "
-                                "Other intents MUST have actions: []. Match the target shell.",
+                                + ". Execute and inspect intents MUST contain at least one typed action. "
+                                "Other intents MUST NOT contain actions. Match the target shell and supplied schema.",
                             }
                         )
                 except httpx.TimeoutException as exc:

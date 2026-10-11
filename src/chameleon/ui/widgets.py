@@ -1,32 +1,24 @@
 import math
 
 from PySide6.QtCore import Property, QEasingCurve, QEvent, QPropertyAnimation, QRectF, Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPaintEvent, QPen
+from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen, QPixmap
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget
+
+from chameleon.core.config import asset_dir
 
 
 class BrandMark(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, size: int = 52) -> None:
         super().__init__(parent)
-        self.setFixedSize(44, 44)
+        self.setFixedSize(size, size)
+        self.logo = QPixmap(str(asset_dir() / "icons/chameleon.png"))
+        self.setAccessibleName("Camaleón Chameleon")
 
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        g = QLinearGradient(0, 0, 44, 44)
-        g.setColorAt(0, QColor("#9befca"))
-        g.setColorAt(1, QColor("#43b88d"))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
-        p.drawRoundedRect(QRectF(1, 1, 42, 42), 13, 13)
-        p.setPen(QPen(QColor("#123a31"), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        path = QPainterPath()
-        path.moveTo(14, 16)
-        path.lineTo(20, 22)
-        path.lineTo(14, 28)
-        path.moveTo(24, 28)
-        path.lineTo(31, 28)
-        p.drawPath(path)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.drawPixmap(self.rect(), self.logo)
         p.end()
 
 
@@ -63,8 +55,8 @@ class MotionButton(QPushButton):
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        a = QColor("#71ddb3" if self.primary else "#182434")
-        b = QColor("#a0f0d2" if self.primary else "#2a4055")
+        a = QColor("#71ddb3" if self.primary else "#172d34")
+        b = QColor("#a0f0d2" if self.primary else "#2a4d52")
         value = self._hover if self.isEnabled() else 0
         color = QColor.fromRgbF(a.redF() * (1 - value) + b.redF() * value, a.greenF() * (1 - value) + b.greenF() * value, a.blueF() * (1 - value) + b.blueF() * value)
         if self.isDown():
@@ -72,7 +64,7 @@ class MotionButton(QPushButton):
         if not self.isEnabled():
             color = QColor("#192330")
         p.setBrush(color)
-        p.setPen(QPen(QColor("#93e9c9" if self.primary and self.isEnabled() else "#35495f"), 1))
+        p.setPen(QPen(QColor("#93e9c9" if self.primary and self.isEnabled() else "#3a5b60"), 1))
         p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 9, 9)
         p.setPen(QColor("#0a2b23" if self.primary and self.isEnabled() else "#e0ebf5" if self.isEnabled() else "#76869a"))
         font = self.font()

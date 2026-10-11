@@ -189,7 +189,7 @@ class TerminalSession(QObject):
             loop = asyncio.new_event_loop()
             self._loop = loop
             try:
-                self._task = loop.create_task(Engine(self.config).plan(line, context))
+                self._task = loop.create_task(Engine(self.config, progress=self.status.emit).plan(line, context))
                 if self.cancel_requested.is_set():
                     self._task.cancel()
                 plan, assessment = loop.run_until_complete(self._task)

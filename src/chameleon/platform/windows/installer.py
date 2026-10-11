@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import time
 import uuid
 from collections.abc import Callable
@@ -158,17 +159,20 @@ def secure_runtime(root: Path) -> None:
     match = re.search(r"S-1-5-[\d-]+", result.stdout)
     if not match:
         raise OSError("No se pudo obtener el SID para proteger runtime")
-    acl = hidden_run(
-        [
+    try:
+        acl = hidden_run(
+            [
             "icacls",
             str(directory),
             "/inheritance:r",
             "/grant:r",
             f"*{match.group()}:(OI)(CI)F",
             "*S-1-5-18:(OI)(CI)F",
-        ],
-        timeout=15,
-    )
+            ],
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise OSError("Windows tardó demasiado en aplicar los permisos del runtime. La instalación se detuvo; vuelve a intentarlo cuando termine la actividad del disco.") from exc
     if acl.returncode:
         raise OSError("No se pudo proteger el runtime privado")
 
@@ -283,6 +287,13 @@ def install(
                     registry_values.append(winreg.EnumValue(key, index))
         except FileNotFoundError:
             pass
+    # Secure the small actions/session tree before adding staging or the full
+    # runtime backup. Inheritable ACL changes after backup creation traversed
+    # thousands of bundled files and timed out during real account updates.
+    if integrate:
+        if progress:
+            progress("Protegiendo la carpeta de acciones y sesiones…")
+        secure_runtime(root)
     # Copy into staging and validate all files before replacing any installed executable.
     staging = root / "runtime" / "staging"
     if staging.exists():
@@ -314,7 +325,6 @@ def install(
         for profile in profile_list:
             edit_profile(profile, root / "bin" / "Chameleon.psm1")
         if integrate:
-            secure_runtime(root)
             set_user_path(path_add(user_path(), str(root / "bin")))
             shortcuts(root, desktop)
             registration(root)

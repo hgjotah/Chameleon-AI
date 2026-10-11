@@ -32,9 +32,10 @@ if ($LASTEXITCODE) { throw 'Bundled source verification failed' }
 & $chameleonPython scripts/package_release.py
 if ($LASTEXITCODE) { throw 'Payload packaging failed' }
 $chameleonIcon = Join-Path (Get-Location) 'src/chameleon/assets/icons/chameleon.ico'
+$chameleonLogo = Join-Path (Get-Location) 'src/chameleon/assets/icons/chameleon.png'
 $chameleonPayload = Join-Path (Get-Location) 'build/payload.zip'
 $chameleonBootstrap = Join-Path (Get-Location) 'installer/bootstrap.py'
-& $chameleonPython -m PyInstaller --noconfirm --clean --onefile --windowed --name ChameleonSetup --icon $chameleonIcon --add-data "$chameleonPayload;." --distpath dist --workpath build/bootstrap --specpath build/bootstrap $chameleonBootstrap
+& $chameleonPython -m PyInstaller --noconfirm --clean --onefile --windowed --name ChameleonSetup --icon $chameleonIcon --add-data "$chameleonPayload;." --add-data "$chameleonLogo;." --distpath dist --workpath build/bootstrap --specpath build/bootstrap $chameleonBootstrap
 if ($LASTEXITCODE) { throw 'Setup build failed' }
 & $chameleonPython scripts/verify_frozen.py --installer
 if ($LASTEXITCODE) { throw 'Installer payload verification failed' }

@@ -37,6 +37,7 @@ for source in assets.rglob("*"):
 print("PASS: bundled interface and shell assets match the current source")
 if "--installer" in sys.argv:
     setup = CArchiveReader(str(repo / "dist" / "ChameleonSetup.exe"))
+    assert setup.extract("chameleon.png") == (assets / "icons/chameleon.png").read_bytes(), "Bootstrap logo is stale"
     embedded = setup.extract("payload.zip")
     with (repo / "build" / "payload.zip").open("rb") as stream:
         expected_hash = hashlib.file_digest(stream, "sha256").digest()

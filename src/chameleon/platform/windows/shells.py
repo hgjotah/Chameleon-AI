@@ -31,6 +31,8 @@ def needs_query(action: Action) -> bool:
 
 
 def describe_action(action: Action, cwd: Path, powershell: bool = False) -> str:
+    if action.kind in ("delete", "read"):
+        return ("Eliminar permanentemente" if action.kind == "delete" else "Leer archivo") + "\nRuta: " + action.path + ("\nIncluye su contenido completo." if action.recursive else "")
     if action.kind in ("create", "mkdir", "copy", "move"):
         names = {"create": "Crear archivo UTF-8 (sin sobrescribir)", "mkdir": "Crear carpeta", "copy": "Copiar archivo (sin sobrescribir)", "move": "Mover archivo (sin sobrescribir)"}
         content = "".join(char if ord(char) >= 32 or char in "\n\t" else f"\\x{ord(char):02x}" for char in action.content)

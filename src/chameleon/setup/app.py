@@ -3,13 +3,15 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QEasingCurve, QObject, QPropertyAnimation, QTimer, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -21,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from chameleon import __version__
 from chameleon.core.config import data_dir, load_config
 from chameleon.platform.windows.installer import (
     read_manifest,
@@ -48,33 +51,35 @@ class SetupWindow(QMainWindow):
         self.signals = WorkerSignals(self)
         self.busy = False
         self.setWindowTitle("Chameleon Setup")
-        self.resize(980, 720)
-        self.setMinimumSize(860, 660)
+        self.resize(1100, 820)
+        self.setMinimumSize(1000, 760)
         body = QWidget()
         self.setCentralWidget(body)
         outer = QHBoxLayout(body)
-        outer.setContentsMargins(22, 22, 22, 22)
-        outer.setSpacing(26)
+        outer.setContentsMargins(24, 24, 24, 24)
+        outer.setSpacing(30)
         rail = QFrame()
-        rail.setObjectName("card")
-        rail.setFixedWidth(255)
+        rail.setObjectName("heroCard")
+        rail.setFixedWidth(310)
         left = QVBoxLayout(rail)
-        left.setContentsMargins(24, 26, 24, 24)
+        left.setContentsMargins(28, 30, 28, 28)
         left.setSpacing(18)
-        left.addWidget(BrandMark())
+        left.addWidget(BrandMark(size=126))
         brand = QLabel("CHAMELEON AI")
         brand.setObjectName("eyebrow")
         left.addWidget(brand)
-        headline = QLabel("Todo tu\nterminal.\nEn tus palabras.")
-        headline.setStyleSheet("font-size:29px;font-weight:600;color:#eef7ff;line-height:1.2")
+        headline = QLabel("Tu terminal.\nAhora habla\ntu idioma.")
+        headline.setStyleSheet("font-size:34px;font-weight:600;color:#eef7f4")
         left.addWidget(headline)
-        description = QLabel("Inteligencia en tu ordenador.\nArchivos bajo tu control.\nTu shell de siempre.")
+        description = QLabel("Un espacio para trabajar con calma.\nQwen en local, acciones claras\ny el control siempre en tus manos.")
         description.setObjectName("muted")
         left.addWidget(description)
         left.addSpacing(12)
-        for number, step_title, note in (("01", "Terminal nativo", "CMD y PowerShell"), ("02", "Acciones al instante", "Archivos, carpetas y navegación"), ("03", "IA privada", "Ollama + Qwen en local")):
+        self.steps: list[QLabel] = []
+        for number, step_title, note in (("01", "Tu espacio de trabajo", "Terminal · CMD · PowerShell"), ("02", "Conecta tu IA local", "Ollama · Qwen descargado"), ("03", "Comprueba y empieza", "Una llamada real al modelo")):
             heading = QLabel(number + "  /  " + step_title)
-            heading.setStyleSheet("font-weight:600;color:#bfe9da")
+            heading.setObjectName("setupStep")
+            self.steps.append(heading)
             left.addWidget(heading)
             label = QLabel(note)
             label.setStyleSheet("font-size:11px;color:#8b9db3")
@@ -86,21 +91,41 @@ class SetupWindow(QMainWindow):
         outer.addWidget(rail)
         right = QVBoxLayout()
         right.setSpacing(12)
-        eyebrow = QLabel("PREPARA TU ESPACIO")
+        eyebrow = QLabel("UN NUEVO ESPACIO PARA HACER MÁS")
         eyebrow.setObjectName("eyebrow")
         right.addWidget(eyebrow)
-        title = QLabel("Listo para empezar.")
+        existing = (self.root / "install.json").exists()
+        title = QLabel("Volvemos a ponerlo a punto." if existing else "Empecemos por aquí.")
         title.setObjectName("heading")
+        title.setWordWrap(True)
         right.addWidget(title)
-        description = QLabel("Instala o repara Chameleon. Conservamos tu configuración\ny el contenido de tus perfiles al actualizar.")
+        description = QLabel("Prepara el terminal y comprueba Qwen en pocos pasos.\nTus preferencias y perfiles se conservan al actualizar.")
         description.setObjectName("muted")
         right.addWidget(description)
         right.addSpacing(4)
+        summary = QFrame()
+        summary.setObjectName("summaryCard")
+        summary_row = QHBoxLayout(summary)
+        summary_row.setContentsMargins(18, 15, 18, 15)
+        for top, bottom in (("CHAMELEON " + __version__, "Windows · 64 bits"), ("100 % LOCAL", "Sin cuenta ni suscripción"), ("TÚ DECIDES", "Cambios con confirmación")):
+            column = QVBoxLayout()
+            heading = QLabel(top)
+            heading.setObjectName("eyebrow")
+            caption = QLabel(bottom)
+            caption.setObjectName("muted")
+            caption.setStyleSheet("font-size:11px;color:#93aba8")
+            column.addWidget(heading)
+            column.addWidget(caption)
+            summary_row.addLayout(column)
+        right.addWidget(summary)
         options = QFrame()
         options.setObjectName("card")
         choices = QVBoxLayout(options)
         choices.setContentsMargins(18, 14, 18, 14)
         choices.setSpacing(5)
+        option_title = QLabel("Personaliza la instalación")
+        option_title.setStyleSheet("font-size:16px;font-weight:600;color:#e5efed;margin-bottom:6px")
+        choices.addWidget(option_title)
         self.ollama = QCheckBox("Instalar Ollama oficial si falta")
         self.ollama.setToolTip("Solo con tu consentimiento. Descarga de ollama.com con firma verificada.")
         self.ollama.setChecked(False)
@@ -117,6 +142,10 @@ class SetupWindow(QMainWindow):
         self.policy.setToolTip("Requiere confirmación expresa y solo afecta a CurrentUser.")
         choices.addWidget(self.policy)
         self.desktop = QCheckBox("Crear acceso directo en el Escritorio")
+        try:
+            self.desktop.setChecked(bool(read_manifest(self.root).get("desktop_shortcut")))
+        except ValueError:
+            pass
         choices.addWidget(self.desktop)
         right.addWidget(options)
         status_row = QHBoxLayout()
@@ -127,20 +156,24 @@ class SetupWindow(QMainWindow):
         right.addLayout(status_row)
         self.progress = QProgressBar()
         self.progress.setRange(0, 1)
+        self.progress_animation = QPropertyAnimation(self.progress, b"value", self)
+        self.progress_animation.setDuration(450)
+        self.progress_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         right.addWidget(self.progress)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(500)
-        self.log.setStyleSheet("QPlainTextEdit{background:#0d1520;border:1px solid #28394e;border-radius:10px;padding:10px;color:#a8bbcf;font-family:Consolas;font-size:11px}")
+        self.log.setStyleSheet("QPlainTextEdit{background:#0b1a20;border:1px solid #274044;border-radius:12px;padding:12px;color:#a0c2bc;font-family:Consolas;font-size:11px}")
         self.log.setMinimumHeight(125)
         right.addWidget(self.log, 1)
         self.buttons: list[QPushButton] = []
-        existing = (self.root / "install.json").exists()
         actions = [("Abrir terminal", self.open_terminal), ("Reparar", self.start_install), ("Actualizar", self.start_install), ("Desinstalar", self.uninstall)] if existing else [("Instalar Chameleon", self.start_install)]
         action_row = QHBoxLayout()
         for index, (name, callback) in enumerate(actions):
             button = MotionButton(name, primary=index == 0)
             button.clicked.connect(callback)
+            if index == 0:
+                self.primary_button = button
             self.buttons.append(button)
             action_row.addWidget(button)
         right.addLayout(action_row)
@@ -148,11 +181,33 @@ class SetupWindow(QMainWindow):
         settings.clicked.connect(self.settings)
         self.buttons.append(settings)
         right.addWidget(settings)
-        self.signals.progress.connect(self.log.appendPlainText)
+        self.signals.progress.connect(self.on_progress)
         self.signals.done.connect(self.finished)
         self.signals.failed.connect(self.failed)
-        self.log.appendPlainText("El terminal y las acciones locales funcionan sin el modelo.\nLa IA se comprueba por separado al terminar la instalación.")
+        self.log.appendPlainText("Todo preparado para empezar.\nQwen se comprueba con una inferencia real antes de dar la IA por lista.")
         outer.addLayout(right, 1)
+        effect = QGraphicsOpacityEffect(rail)
+        rail.setGraphicsEffect(effect)
+        self.entrance = QPropertyAnimation(effect, b"opacity", self)
+        self.entrance.setDuration(480)
+        self.entrance.setStartValue(0.2)
+        self.entrance.setEndValue(1.0)
+        self.entrance.start()
+        self.elapsed_timer = QTimer(self)
+        self.elapsed_timer.setInterval(1000)
+        self.elapsed_timer.timeout.connect(lambda: self.state.set_state(f"Preparando · {int(time.monotonic() - self.started)} s", "#87e6bc", True))
+
+    def on_progress(self, message: str) -> None:
+        self.log.appendPlainText(message)
+        phase = 2 if any(word in message for word in ("inferencia", "inference", "Qwen")) else 1 if any(word in message for word in ("Ollama", "download", "descarg")) else 0
+        for index, heading in enumerate(self.steps):
+            heading.setStyleSheet("font-weight:600;color:" + ("#86e5b9" if index <= phase else "#678c88"))
+        if self.busy:
+            self.progress.setRange(0, 100)
+            self.progress_animation.stop()
+            self.progress_animation.setStartValue(self.progress.value())
+            self.progress_animation.setEndValue((25, 60, 85)[phase])
+            self.progress_animation.start()
 
     def open_terminal(self) -> None:
         executable = self.root / "core" / "ChameleonTerminal.exe"
@@ -201,6 +256,8 @@ class SetupWindow(QMainWindow):
         self.progress.setRange(0, 0)
         self.state.set_state("Instalando…", "#81e3bc", True)
         self.busy = True
+        self.started = time.monotonic()
+        self.elapsed_timer.start()
         for option in (self.ollama, self.model, self.policy, self.desktop):
             option.setEnabled(False)
         for button in self.buttons:
@@ -222,6 +279,8 @@ class SetupWindow(QMainWindow):
 
     def finished(self, message: str) -> None:
         self.busy = False
+        self.elapsed_timer.stop()
+        self.progress_animation.stop()
         self.progress.setRange(0, 1)
         self.progress.setValue(1)
         self.log.appendPlainText(message)
@@ -230,6 +289,10 @@ class SetupWindow(QMainWindow):
             option.setEnabled(True)
         for button in self.buttons:
             button.setEnabled(True)
+        if (self.root / "core/ChameleonTerminal.exe").is_file() and self.primary_button.text() == "Instalar Chameleon":
+            self.primary_button.clicked.disconnect()
+            self.primary_button.clicked.connect(self.open_terminal)
+            self.primary_button.setText("Abrir mi terminal")
 
     def failed(self, message: str) -> None:
         self.finished("Error: " + message + "\nPuedes volver a ejecutar Reparar.")

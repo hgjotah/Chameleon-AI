@@ -40,17 +40,45 @@ def resolve_path(value: str, ctx: Context) -> Path:
         "inicio": "home",
         "~": "home",
     }
-    key = aliases.get(normalize(value), value)
+    first, separator, remainder = value.replace("\\", "/").partition("/")
+    key = aliases.get(normalize(first), first)
     match = next(
         (v for k, v in ctx.known_directories.items() if k.casefold() == key.casefold()), None
     )
-    path = Path(match or value).expanduser()
+    path = (Path(match) / remainder if separator else Path(match)) if match else Path(value).expanduser()
     return (Path(ctx.cwd) / path).resolve() if not path.is_absolute() else path.resolve()
 
 
 def unquote(value: str) -> str:
     value = value.strip()
     return value[1:-1] if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'" else value
+
+
+def resolve_reference(value: str, ctx: Context) -> tuple[Path, list[Path]]:
+    """Resolve named files in a folder without treating Spanish prose as a path."""
+    literal = resolve_path(value, ctx)
+    # Typed model paths are data: a directory/file containing "de" or "en"
+    # must not be reinterpreted as a natural-language location clause.
+    if Path(unquote(value)).is_absolute() or literal.exists():
+        target = literal
+    else:
+        value = re.sub(r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|carpeta|directorio|file|folder)\s+", "", value.strip(), flags=re.I)
+        value = re.sub(r"^(?:llamado|llamada|named|called)\s+", "", value, flags=re.I)
+        named = split_phrase(value, r"\s+(?:llamado|llamada|named|called)\s+")
+        if named and re.match(r"^(?:en|in|dentro de)\s+", named[0], re.I):
+            folder = re.sub(r"^(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?", "", named[0], flags=re.I)
+            target = resolve_path(folder, ctx) / unquote(named[1])
+        else:
+            location = split_phrase(value, r"\s+(?:en|in|dentro de|de|from)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?")
+            target = resolve_path(location[1], ctx) / unquote(location[0]) if location else resolve_path(value, ctx)
+    target = target.resolve()
+    if target.exists() or target.suffix or not target.parent.is_dir():
+        return target, []
+    # Windows Explorer commonly hides extensions. Only match the exact stem;
+    # ambiguity must be resolved by the user before a destructive action.
+    from itertools import islice
+    matches = [p for p in islice(target.parent.iterdir(), 5000) if p.is_file() and p.stem.casefold() == target.name.casefold()]
+    return (matches[0], []) if len(matches) == 1 else (target, sorted(matches))
 
 
 CREATE = re.compile(
@@ -175,10 +203,10 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
             "Listar PDF",
         )
     deletion = re.match(
-        r"^(?:elimina|borra|delete|remove)\s+(?:el archivo |the file )?(.+)$", request, re.I
+        r"^(?:elimina|eliminar|borra|borrar|delete|remove)\s+(.+)$", request, re.I
     )
     if deletion:
-        value = deletion.group(1).strip().strip('"').strip("'")
+        value = re.sub(r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|file)\s+", "", deletion.group(1).strip(), flags=re.I)
         if normalize(value) in ("viejo", "old", "archivo viejo", "old file"):
             candidates = [
                 entry.rstrip("/")
@@ -191,7 +219,9 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
                 summary="Indica el archivo exacto que quieres eliminar.",
                 choices=candidates[:20],
             )
-        target_path = resolve_path(value, ctx)
+        target_path, matches = resolve_reference(value, ctx)
+        if matches:
+            return Plan(intent="clarify", shell=ctx.shell, summary="Hay varios archivos con ese nombre. Elige la ruta exacta que quieres eliminar.", choices=[str(p) for p in matches[:20]])
         if target_path.exists():
             return execute(
                 Action(kind="delete", path=str(target_path), recursive=target_path.is_dir()),
@@ -200,7 +230,7 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         return Plan(
             intent="clarify",
             shell=ctx.shell,
-            summary=f"El archivo {value} no existe. Indica una ruta existente.",
+            summary=f"No se encontró el destino comprobado: {target_path}. Indica una ruta existente.",
         )
     return None
 

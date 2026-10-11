@@ -1,5 +1,7 @@
 # Privacy
 
+In 0.3.0, factual file answers can request bounded read-only inspection in the current directory or known user directories. Up to eight tool observations enter model context within a 12,000-character budget; text is redacted and capped at 6,000 characters per read, and listings are capped at 20 rows in model context. Reads support UTF-8 and UTF-16 BOM; binary files are rejected. Results identify truncation, partial listings and errors. Observations remain in request memory and are not saved as permanent history. Strict mode disables automatic inspection.
+
 No cloud API, API keys, analytics or telemetry. Ollama requests go to fixed loopback `127.0.0.1:11434`, with proxies disabled. External networking occurs only during explicitly consented installation/model download and user-clicked terminal links or directly executed user programs.
 
 Saved by default: configuration, install ownership/hashes, GUI preferences and bounded technical rotating logs. Permanent prompt/output history is off. The GUI holds a 4096-character recent-output tail and six context items in memory; ANSI control sequences are removed and at most 600 visible characters enter model context. The model sees up to four recent items capped at 400 characters, 40 directory entries and only relevant executable paths. External sessions persist at most six redactable AI summaries/requests in runtime files, validated against process creation time, expire after 30 minutes and are purged on later invocation. They never collect output from normal commands typed in external shells.

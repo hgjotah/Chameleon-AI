@@ -12,7 +12,7 @@ from tkinter import messagebox, ttk
 def main() -> int:
     window = tk.Tk()
     window.title("Chameleon AI")
-    window.geometry("540x240")
+    window.geometry("540x340")
     window.resizable(False, False)
     window.configure(bg="#0b1017")
     cancelled = False
@@ -20,9 +20,16 @@ def main() -> int:
         nonlocal cancelled
         cancelled = True
     window.protocol("WM_DELETE_WINDOW", cancel)
+    resource = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    if not getattr(sys, "frozen", False):
+        resource = Path(__file__).resolve().parents[1] / "src/chameleon/assets/icons"
+    logo = tk.PhotoImage(file=str(resource / "chameleon.png"))
+    window.iconphoto(True, logo)
+    mark = logo.subsample(max(1, logo.width() // 88))
+    tk.Label(window, image=mark, bg="#0b1017").pack(pady=(22, 0))
     tk.Label(
         window, text="Chameleon", bg="#0b1017", fg="#81e3bc", font=("Segoe UI", 27, "bold")
-    ).pack(pady=(30, 12))
+    ).pack(pady=(8, 12))
     label = tk.Label(
         window,
         text="Preparando el instalador local…",
