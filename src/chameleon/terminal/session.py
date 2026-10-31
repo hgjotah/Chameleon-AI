@@ -183,13 +183,17 @@ class TerminalSession(QObject):
         self.at_prompt = False
         self.status.emit("PROCESSING")
         context.shell_version = self.shell_version
+        context.executables.update({name: "shell function/alias" for name in self.aliases})
         context.observed_output = redact(self.tail)[-2000:]
+        request_config = self.config.model_copy(deep=True)
 
         def worker() -> None:
             loop = asyncio.new_event_loop()
             self._loop = loop
             try:
-                self._task = loop.create_task(Engine(self.config, progress=self.status.emit).plan(line, context))
+                self._task = loop.create_task(
+                    Engine(request_config, progress=self.status.emit).plan(line, context)
+                )
                 if self.cancel_requested.is_set():
                     self._task.cancel()
                 plan, assessment = loop.run_until_complete(self._task)
@@ -258,7 +262,9 @@ class TerminalSession(QObject):
             )
             command = "@" + quoted + " & del " + quoted + " >nul 2>&1"
         else:
-            commands = [PowerShellAdapter().render(a, self.cwd) for a in plan.actions]
+            commands = [
+                PowerShellAdapter(plan.policy_token).render(a, self.cwd) for a in plan.actions
+            ]
             command = "; ".join(commands)
         # Cancel the shell's editable line and wait for its real prompt acknowledgement.
         # Combining ESC with injected text can be decoded as an Alt key by ConPTY.
@@ -270,7 +276,9 @@ class TerminalSession(QObject):
     def _pending_timeout(self) -> None:
         if self.pending_command is not None and not self.closed:
             self.pending_command = None
-            self.failed.emit("El shell no respondió al cambio de línea. No se ejecutó la acción. Pulsa Ctrl+C y vuelve a intentarlo.")
+            self.failed.emit(
+                "El shell no respondió al cambio de línea. No se ejecutó la acción. Pulsa Ctrl+C y vuelve a intentarlo."
+            )
 
     def close(self) -> None:
         self.closed = True

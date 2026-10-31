@@ -53,10 +53,21 @@ async def run(args: argparse.Namespace) -> int:
         from chameleon.core.files import apply_file_action
         from chameleon.safety.engine import RiskEngine
 
+        if args.policy:
+            from chameleon.core.config import SafetyConfig
+
+            if len(args.policy) > 4096:
+                raise ValueError("Política de ejecución demasiado grande")
+            config.safety = SafetyConfig.model_validate_json(
+                base64.b64decode(args.policy, validate=True)
+            )
+
         action = Action.model_validate_json(base64.b64decode(args.encoded or "", validate=True))
         from chameleon.platform.windows.system import WindowsPlatform
 
-        decision = RiskEngine(WindowsPlatform().system_directory()).action(action, Path.cwd())
+        decision = RiskEngine(WindowsPlatform().system_directory(), policy=config.safety).action(
+            action, Path.cwd()
+        )
         if decision.level == Risk.BLOCKED:
             raise ValueError(decision.reason)
         print(apply_file_action(action))
@@ -89,12 +100,19 @@ async def run(args: argparse.Namespace) -> int:
         if operation == "setup" and args.install:
             from chameleon.platform.windows.installer import read_manifest
             from chameleon.setup.service import InstallOptions, SetupService
+
             payload = Path(args.payload) if args.payload else Path(sys.executable).parent
             if not getattr(sys, "frozen", False):
-                raise ValueError("Para instalar utiliza el ejecutable independiente ChameleonCore.exe setup --install --payload <carpeta>, o ChameleonSetup.exe.")
+                raise ValueError(
+                    "Para instalar utiliza el ejecutable independiente ChameleonCore.exe setup --install --payload <carpeta>, o ChameleonSetup.exe."
+                )
             message = await asyncio.to_thread(
                 SetupService(root, payload, human).run,
-                InstallOptions(allow_ollama=args.install_ollama, pull_model=args.download_model or args.install_ollama, desktop=read_manifest(root).get("desktop_shortcut", False)),
+                InstallOptions(
+                    allow_ollama=args.install_ollama,
+                    pull_model=args.download_model or args.install_ollama,
+                    desktop=read_manifest(root).get("desktop_shortcut", False),
+                ),
             )
             human(message)
             return 3 if "necesita atención" in message else 0
@@ -123,7 +141,7 @@ async def run(args: argparse.Namespace) -> int:
     store = SessionStore(root, args.session)
     cwd = Path(args.cwd or os.getcwd()).resolve()
     ctx = build_context(cwd, shell, store.recent())
-    engine = Engine(config, progress=human)
+    engine = Engine(config, progress=human if args.debug or not config.ai.command_only else None)
     if args.model:
         config.ai.prefer_model = True
     for _ in range(4):
@@ -143,22 +161,32 @@ async def run(args: argparse.Namespace) -> int:
     else:
         human("Demasiadas aclaraciones. No se ejecutó nada.")
         return 1
-    human("Origen: " + plan.trace.label())
+    if args.debug or not config.ai.command_only:
+        human("Origen: " + plan.trace.label())
     if plan.intent != "execute":
         human(plan.summary)
         return 0 if plan.intent == "explain" else 1
-    adapter = CmdAdapter() if shell == "cmd" else PowerShellAdapter()
+    adapter = (
+        CmdAdapter(plan.policy_token) if shell == "cmd" else PowerShellAdapter(plan.policy_token)
+    )
     if assessment.level == Risk.BLOCKED:
         human("Bloqueado: " + assessment.reason)
         return 1
     commands = [adapter.render(action, cwd) for action in plan.actions]
+    if config.ai.command_only:
+        human("\n".join(commands))
     if (
         args.show
         or args.dry_run
         or config.ai.show_generated_commands
         or assessment.level == Risk.CONFIRM
     ):
-        human(plan.summary + "\n\nAcciones:\n" + "\n\n".join(describe_action(a, cwd, shell != "cmd") for a in plan.actions))
+        if not config.ai.command_only:
+            human(
+                plan.summary
+                + "\n\nAcciones:\n"
+                + "\n\n".join(describe_action(a, cwd, shell != "cmd") for a in plan.actions)
+            )
         if args.show or config.ai.show_generated_commands:
             human("\nComando generado:\n" + "\n".join(commands))
     if args.dry_run:
@@ -212,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--emit", choices=("cmd", "powershell"))
     parser.add_argument("--response")
     parser.add_argument("--encoded")
+    parser.add_argument("--policy")
     parser.add_argument("--shell", choices=("cmd", "powershell", "pwsh"))
     parser.add_argument("--session", type=int)
     parser.add_argument("--cwd")
@@ -236,7 +265,9 @@ def main(argv: list[str] | None = None) -> int:
     except (ProviderError, ValueError, OSError) as exc:
         logging.getLogger("chameleon").warning("Operation failed: %s", type(exc).__name__)
         if isinstance(exc, PermissionError):
-            human(f"Windows denegó acceso a {exc.filename or 'la ruta'}. Usa una carpeta de usuario (Documentos o Escritorio) y comprueba sus permisos; no hace falta elevar la terminal para archivos normales.")
+            human(
+                f"Windows denegó acceso a {exc.filename or 'la ruta'}. Usa una carpeta de usuario (Documentos o Escritorio) y comprueba sus permisos; no hace falta elevar la terminal para archivos normales."
+            )
         else:
             human(str(exc))
         return 1

@@ -1,5 +1,19 @@
 # Installation, repair and removal
 
+## Modelo y acceso en 0.5.0
+
+Setup permite elegir qwen3:4b-instruct (~2,5 GB) o qwen2.5:0.5b (~398 MB).
+Reutiliza el modelo elegido si está presente; si no, lo descarga al preparar IA.
+En Ajustes → IA local puedes descargar/probar otra etiqueta local y guardarla.
+La selección rápida del terminal afecta a esa ventana. No cambia a otro modelo
+silenciosamente cuando falta el seleccionado.
+
+Ajustes → Acceso del modelo define los perfiles y permisos. El selector rápido
+afecta a la sesión; guarda el perfil en Ajustes para los siguientes procesos CLI/
+ventanas. Acceso total ejecuta sin bloqueos/confirmaciones de Chameleon con los
+derechos actuales de Windows. Scripts arbitrarios necesitan todos los permisos
+de efectos; los filtros de aplicación no son un sandbox de Windows.
+
 ## Preparación de IA en 0.4.0
 
 Setup muestra tres estados diferentes: ejecutable de Ollama instalado, servidor local accesible y modelo descargado. **Preparar IA** solicita consentimiento para instalar Ollama oficial si falta, inicia el servidor, descarga Qwen si falta y verifica una respuesta real. Reutiliza las dependencias presentes. Una descarga interrumpida deja la IA pendiente; vuelve a ejecutar **Reparar**. El porcentaje pertenece a la descarga actual, no a una estimación de toda la instalación.

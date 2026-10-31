@@ -102,7 +102,7 @@ def test_cmd_rejects_invalid(value: str) -> None:
         ("powershell -EncodedCommand x", Risk.BLOCKED),
         ('python -c "danger"', Risk.BLOCKED),
         ("dir > output.txt", Risk.CONFIRM),
-        ("dir & shutdown /s", Risk.CONFIRM),
+        ("dir & shutdown /s", Risk.BLOCKED),
         ("unknown-program", Risk.BLOCKED),
         (r"C:\Temp\ipconfig.exe", Risk.BLOCKED),
         ("git diff --output=important.txt", Risk.CONFIRM),
@@ -179,14 +179,14 @@ def test_provider_schema_and_retry(context: Context) -> None:
         )
         return httpx.Response(200, json={"message": {"content": content}})
 
-    provider = OllamaProvider(Config().ai, httpx.MockTransport(mock))
+    provider = OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(mock))
     plan = asyncio.run(provider.plan("list", context))
     assert plan.intent == "execute" and len(calls) == 2
 
 
 def test_provider_invalid_fails(context: Context) -> None:
     provider = OllamaProvider(
-        Config().ai,
+        Config(ai={"command_only": False}).ai,
         httpx.MockTransport(
             lambda request: httpx.Response(
                 200,
@@ -208,19 +208,19 @@ def test_process_mutation_not_forced_into_readonly_grammar(context: Context) -> 
         kinds = {v["properties"]["kind"]["const"] for v in schema["$defs"]["Action"]["anyOf"]}
         assert "command" in kinds
         return httpx.Response(200, json={"message": {"content": Plan(intent="clarify", shell="cmd", summary="Indica el PID exacto.").model_dump_json()}})
-    plan = asyncio.run(OllamaProvider(Config().ai, httpx.MockTransport(mock)).plan("cierra los procesos que usan memoria", context))
+    plan = asyncio.run(OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(mock)).plan("cierra los procesos que usan memoria", context))
     assert plan.intent == "clarify" and not plan.actions
 
 
 def test_local_rules_work_offline(context: Context) -> None:
-    config = Config()
+    config = Config(ai={"command_only": False})
     config.ai.enabled = False
     plan, assessment = asyncio.run(Engine(config).plan("Downloads", context))
     assert plan.actions[0].kind == "cd" and assessment.level == Risk.SAFE
 
 
 def test_config_recovery(tmp_path: Path) -> None:
-    config = Config()
+    config = Config(ai={"command_only": False})
     assert not config.privacy.save_ai_history
     save_config(config, tmp_path)
     assert load_config(tmp_path)[0] == config
@@ -256,11 +256,11 @@ def test_cloud_alias_blocked_before_prompt(context: Context) -> None:
 
     with pytest.raises(ProviderError):
         asyncio.run(
-            OllamaProvider(Config().ai, httpx.MockTransport(mock)).plan("private request", context)
+            OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(mock)).plan("private request", context)
         )
     assert calls == ["/api/show"]
 
 
 def test_cloud_config_rejected() -> None:
     with pytest.raises(ValueError):
-        Config().ai.model = "gemma4:cloud"
+        Config(ai={"command_only": False}).ai.model = "gemma4:cloud"

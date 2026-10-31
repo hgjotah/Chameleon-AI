@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen, QPixmap
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget
 
 from chameleon.core.config import asset_dir
+from chameleon.ui.vendor.pyglass.effect import GlassStyle, paint_glass
 
 
 class BrandMark(QWidget):
@@ -24,6 +25,7 @@ class BrandMark(QWidget):
 
 class MotionButton(QPushButton):
     """Native accessible button with a short, reversible hover transition."""
+
     def __init__(self, text: str, parent: QWidget | None = None, primary: bool = False) -> None:
         super().__init__(text, parent)
         self.primary = primary
@@ -55,18 +57,47 @@ class MotionButton(QPushButton):
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        a = QColor("#71ddb3" if self.primary else "#172d34")
-        b = QColor("#a0f0d2" if self.primary else "#2a4d52")
+        a = QColor("#26776d" if self.primary else "#23364e")
+        b = QColor("#36a08b" if self.primary else "#3d5672")
         value = self._hover if self.isEnabled() else 0
-        color = QColor.fromRgbF(a.redF() * (1 - value) + b.redF() * value, a.greenF() * (1 - value) + b.greenF() * value, a.blueF() * (1 - value) + b.blueF() * value)
+        color = QColor.fromRgbF(
+            a.redF() * (1 - value) + b.redF() * value,
+            a.greenF() * (1 - value) + b.greenF() * value,
+            a.blueF() * (1 - value) + b.blueF() * value,
+        )
         if self.isDown():
             color = color.darker(115)
         if not self.isEnabled():
             color = QColor("#192330")
         p.setBrush(color)
         p.setPen(QPen(QColor("#93e9c9" if self.primary and self.isEnabled() else "#3a5b60"), 1))
-        p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 9, 9)
-        p.setPen(QColor("#0a2b23" if self.primary and self.isEnabled() else "#e0ebf5" if self.isEnabled() else "#76869a"))
+        button_rect = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.drawRoundedRect(button_rect, 17, 17)
+        paint_glass(
+            p,
+            button_rect,
+            17,
+            None,
+            style=GlassStyle(
+                shadow_layers=0,
+                tint_top=int(15 + value * 12),
+                tint_bottom=3,
+                rim_top=int(100 + value * 70),
+                rim_bottom=45,
+                rim_mid=16,
+                sheen_alpha=19,
+                rim_width=0.8,
+            ),
+        )
+        p.setPen(
+            QColor(
+                "#edfff9"
+                if self.primary and self.isEnabled()
+                else "#e0ebf5"
+                if self.isEnabled()
+                else "#76869a"
+            )
+        )
         font = self.font()
         font.setWeight(QFont.Weight.DemiBold)
         p.setFont(font)
@@ -93,7 +124,9 @@ class StatusPill(QLabel):
     def set_state(self, text: str, color: str, active: bool = False) -> None:
         self.setText(text)
         self.color = color
-        self.setStyleSheet(f"background:#15202e;color:{color};border:1px solid #304052;border-radius:15px;font-size:11px;")
+        self.setStyleSheet(
+            f"background:rgba(23,38,58,150);color:{color};border:1px solid rgba(175,210,240,45);border-radius:15px;font-size:11px;"
+        )
         self.timer.start() if active else self.timer.stop()
         self.update()
 

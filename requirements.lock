@@ -12,6 +12,7 @@ iniconfig==2.3.1
 librt==0.16.0
 mypy==1.19.1
 mypy_extensions==1.1.0
+numpy==2.5.4
 packaging==26.3
 pathspec==1.1.1
 pefile==2024.8.26

@@ -45,7 +45,11 @@ def resolve_path(value: str, ctx: Context) -> Path:
     match = next(
         (v for k, v in ctx.known_directories.items() if k.casefold() == key.casefold()), None
     )
-    path = (Path(match) / remainder if separator else Path(match)) if match else Path(value).expanduser()
+    path = (
+        (Path(match) / remainder if separator else Path(match))
+        if match
+        else Path(value).expanduser()
+    )
     return (Path(ctx.cwd) / path).resolve() if not path.is_absolute() else path.resolve()
 
 
@@ -62,22 +66,44 @@ def resolve_reference(value: str, ctx: Context) -> tuple[Path, list[Path]]:
     if Path(unquote(value)).is_absolute() or literal.exists():
         target = literal
     else:
-        value = re.sub(r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|carpeta|directorio|file|folder)\s+", "", value.strip(), flags=re.I)
+        value = re.sub(
+            r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|carpeta|directorio|file|folder)\s+",
+            "",
+            value.strip(),
+            flags=re.I,
+        )
         value = re.sub(r"^(?:llamado|llamada|named|called)\s+", "", value, flags=re.I)
         named = split_phrase(value, r"\s+(?:llamado|llamada|named|called)\s+")
         if named and re.match(r"^(?:en|in|dentro de)\s+", named[0], re.I):
-            folder = re.sub(r"^(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?", "", named[0], flags=re.I)
+            folder = re.sub(
+                r"^(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?",
+                "",
+                named[0],
+                flags=re.I,
+            )
             target = resolve_path(folder, ctx) / unquote(named[1])
         else:
-            location = split_phrase(value, r"\s+(?:en|in|dentro de|de|from)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?")
-            target = resolve_path(location[1], ctx) / unquote(location[0]) if location else resolve_path(value, ctx)
+            location = split_phrase(
+                value,
+                r"\s+(?:en|in|dentro de|de|from)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?",
+            )
+            target = (
+                resolve_path(location[1], ctx) / unquote(location[0])
+                if location
+                else resolve_path(value, ctx)
+            )
     target = target.resolve()
     if target.exists() or target.suffix or not target.parent.is_dir():
         return target, []
     # Windows Explorer commonly hides extensions. Only match the exact stem;
     # ambiguity must be resolved by the user before a destructive action.
     from itertools import islice
-    matches = [p for p in islice(target.parent.iterdir(), 5000) if p.is_file() and p.stem.casefold() == target.name.casefold()]
+
+    matches = [
+        p
+        for p in islice(target.parent.iterdir(), 5000)
+        if p.is_file() and p.stem.casefold() == target.name.casefold()
+    ]
     return (matches[0], []) if len(matches) == 1 else (target, sorted(matches))
 
 
@@ -102,7 +128,7 @@ def split_phrase(value: str, expression: str) -> tuple[str, str] | None:
             protected.add(index)
     for match in re.finditer(expression, value, re.I):
         if not any(index in protected for index in range(match.start(), match.end())):
-            return value[:match.start()].strip(), value[match.end():].strip()
+            return value[: match.start()].strip(), value[match.end() :].strip()
     return None
 
 
@@ -112,7 +138,7 @@ def refine_request(original: str, answer: str, plan: Plan) -> str:
     if creation and not creation.group("rest").strip():
         return original.rstrip() + " " + answer
     if creation and plan.summary.startswith("Indica el nombre"):
-        return original[:creation.start("rest")] + answer + " " + creation.group("rest")
+        return original[: creation.start("rest")] + answer + " " + creation.group("rest")
     if normalize(original).startswith(("elimina", "borra", "delete", "remove")):
         return "elimina " + answer
     if normalize(original).startswith(("ve a", "vete a", "entra en", "go to", "open folder")):
@@ -121,7 +147,22 @@ def refine_request(original: str, answer: str, plan: Plan) -> str:
 
 
 def local_plan(request: str, ctx: Context) -> Plan | None:
-    request = re.sub(r"^(?:por favor[, ]+|quiero que |puedes |podr[ií]as )", "", request.strip(), flags=re.I)
+    from chameleon.core.scripts import existing_script
+
+    try:
+        script = existing_script(request, ctx)
+    except FileNotFoundError as exc:
+        return Plan(intent="error", shell=ctx.shell, summary=str(exc))
+    if script:
+        return Plan(
+            intent="execute",
+            shell=ctx.shell,
+            summary=script[1],
+            actions=[Action(kind="command", command=script[1])],
+        )
+    request = re.sub(
+        r"^(?:por favor[, ]+|quiero que |puedes |podr[ií]as )", "", request.strip(), flags=re.I
+    )
     text = normalize(request)
 
     def execute(action: Action, summary: str) -> Plan:
@@ -129,29 +170,73 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
 
     creation = CREATE.match(request)
     if creation:
-        directory = normalize(creation.group("kind")) in ("carpeta", "directorio", "folder", "directory")
+        directory = normalize(creation.group("kind")) in (
+            "carpeta",
+            "directorio",
+            "folder",
+            "directory",
+        )
         rest = creation.group("rest").strip()
         if not rest:
-            return Plan(intent="clarify", shell=ctx.shell, summary="¿Qué nombre o ruta quieres para la carpeta?" if directory else "¿Qué nombre o ruta quieres para el archivo?")
+            return Plan(
+                intent="clarify",
+                shell=ctx.shell,
+                summary="¿Qué nombre o ruta quieres para la carpeta?"
+                if directory
+                else "¿Qué nombre o ruta quieres para el archivo?",
+            )
         if re.match(r"^(?:en|in|con (?:contenido|texto)|with (?:content|text))\b", rest, re.I):
-            return Plan(intent="clarify", shell=ctx.shell, summary="Indica el nombre del archivo o carpeta que quieres crear.")
-        parts = split_phrase(rest, r"\s+(?:con (?:el )?(?:contenido|texto)|que (?:contenga|diga)|with (?:the )?(?:content|text))\s*:?\s*")
+            return Plan(
+                intent="clarify",
+                shell=ctx.shell,
+                summary="Indica el nombre del archivo o carpeta que quieres crear.",
+            )
+        parts = split_phrase(
+            rest,
+            r"\s+(?:con (?:el )?(?:contenido|texto)|que (?:contenga|diga)|with (?:the )?(?:content|text))\s*:?\s*",
+        )
         name, content = (parts[0], unquote(parts[1])) if parts else (rest, "")
-        location = split_phrase(name, r"\s+(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?")
-        creation_target = resolve_path(location[1], ctx) / unquote(location[0]) if location else resolve_path(name, ctx)
-        return execute(Action(kind="mkdir" if directory else "create", path=str(creation_target), content=content), f"Crear {'carpeta' if directory else 'archivo'}: {creation_target}" + (f"\nContenido:\n{content}" if content else ""))
-    reading = re.match(r"^(?:lee|leer|muestra el contenido de|read|show contents of)\s+(?:(?:el archivo|the file)\s+)?(.+)$", request, re.I)
+        location = split_phrase(
+            name,
+            r"\s+(?:en|in|dentro de)\s+(?:(?:la|el|the)\s+)?(?:(?:carpeta|directorio|folder)\s+)?",
+        )
+        creation_target = (
+            resolve_path(location[1], ctx) / unquote(location[0])
+            if location
+            else resolve_path(name, ctx)
+        )
+        return execute(
+            Action(
+                kind="mkdir" if directory else "create", path=str(creation_target), content=content
+            ),
+            f"Crear {'carpeta' if directory else 'archivo'}: {creation_target}"
+            + (f"\nContenido:\n{content}" if content else ""),
+        )
+    reading = re.match(
+        r"^(?:lee|leer|muestra el contenido de|read|show contents of)\s+(?:(?:el archivo|the file)\s+)?(.+)$",
+        request,
+        re.I,
+    )
     if reading:
         target = resolve_path(reading.group(1), ctx)
         return execute(Action(kind="read", path=str(target)), f"Leer {target}")
-    transfer = re.match(r"^(copia|copiar|mueve|mover|copy|move)\s+(?:(?:el archivo|the file)\s+)?(.+?)\s+(?:a|al|to)\s+(.+)$", request, re.I)
+    transfer = re.match(
+        r"^(copia|copiar|mueve|mover|copy|move)\s+(?:(?:el archivo|the file)\s+)?(.+?)\s+(?:a|al|to)\s+(.+)$",
+        request,
+        re.I,
+    )
     if transfer:
         source = resolve_path(transfer.group(2), ctx)
         target = resolve_path(transfer.group(3), ctx)
         if target.is_dir():
             target /= source.name
-        kind: Literal["copy", "move"] = "copy" if normalize(transfer.group(1)).startswith("cop") else "move"
-        return execute(Action(kind=kind, path=str(source), destination=str(target)), f"{'Copiar' if kind == 'copy' else 'Mover'} {source} → {target}")
+        kind: Literal["copy", "move"] = (
+            "copy" if normalize(transfer.group(1)).startswith("cop") else "move"
+        )
+        return execute(
+            Action(kind=kind, path=str(source), destination=str(target)),
+            f"{'Copiar' if kind == 'copy' else 'Mover'} {source} → {target}",
+        )
     if text in ("limpiar", "limpia", "clear", "limpia la pantalla", "clear screen"):
         return execute(Action(kind="clear"), "Limpiar pantalla")
     if text in ("atras", "sube una carpeta", "up", "go back", "..", "back"):
@@ -187,7 +272,10 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         "dime que proceso esta usando mas ram",
     ):
         return execute(Action(kind="processes", limit=20), "Procesos ordenados por memoria RAM")
-    if re.fullmatch(r"(?:muestra|muestrame|lista|show|list) (?:los |the )?(?:procesos|processes)(?: (?:que usan mas (?:memoria|ram)|using (?:the )?most (?:memory|ram)|por (?:memoria|ram)))?", text):
+    if re.fullmatch(
+        r"(?:muestra|muestrame|lista|show|list) (?:los |the )?(?:procesos|processes)(?: (?:que usan mas (?:memoria|ram)|using (?:the )?most (?:memory|ram)|por (?:memoria|ram)))?",
+        text,
+    ):
         return execute(Action(kind="processes", limit=20), "Procesos ordenados por memoria RAM")
     if re.fullmatch(
         r"(?:lista|muestra|muestrame|encuentra|busca|find|list|show)(?:me)?(?: todos)?(?: los)?(?: archivos)?(?: de)? (?:pdf|pdfs)",
@@ -202,11 +290,14 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
             ),
             "Listar PDF",
         )
-    deletion = re.match(
-        r"^(?:elimina|eliminar|borra|borrar|delete|remove)\s+(.+)$", request, re.I
-    )
+    deletion = re.match(r"^(?:elimina|eliminar|borra|borrar|delete|remove)\s+(.+)$", request, re.I)
     if deletion:
-        value = re.sub(r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|file)\s+", "", deletion.group(1).strip(), flags=re.I)
+        value = re.sub(
+            r"^(?:(?:el|la|un|una|the|a)\s+)?(?:archivo|fichero|file)\s+",
+            "",
+            deletion.group(1).strip(),
+            flags=re.I,
+        )
         if normalize(value) in ("viejo", "old", "archivo viejo", "old file"):
             candidates = [
                 entry.rstrip("/")
@@ -221,7 +312,12 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
             )
         target_path, matches = resolve_reference(value, ctx)
         if matches:
-            return Plan(intent="clarify", shell=ctx.shell, summary="Hay varios archivos con ese nombre. Elige la ruta exacta que quieres eliminar.", choices=[str(p) for p in matches[:20]])
+            return Plan(
+                intent="clarify",
+                shell=ctx.shell,
+                summary="Hay varios archivos con ese nombre. Elige la ruta exacta que quieres eliminar.",
+                choices=[str(p) for p in matches[:20]],
+            )
         if target_path.exists():
             return execute(
                 Action(kind="delete", path=str(target_path), recursive=target_path.is_dir()),

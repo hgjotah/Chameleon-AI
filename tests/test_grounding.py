@@ -34,7 +34,7 @@ def test_reported_delete_phrase_resolves_verified_target(tmp_path: Path, phrase:
     target = downloads / "Prueba.txt"
     target.write_text("keep until confirmed", encoding="utf-8")
     context = Context(cwd=str(tmp_path), known_directories={"Downloads": str(downloads)})
-    plan, assessment = asyncio.run(Engine(Config()).plan(phrase, context))
+    plan, assessment = asyncio.run(Engine(Config(ai={"command_only": False})).plan(phrase, context))
     assert plan.intent == "execute" and plan.actions[0].path == str(target)
     assert plan.trace.source == "local" and assessment.level == Risk.CONFIRM
     assert target.read_text(encoding="utf-8") == "keep until confirmed"
@@ -91,9 +91,9 @@ def test_model_reads_actual_file_before_answering(tmp_path: Path) -> None:
             },
         )
 
-    provider = OllamaProvider(Config().ai, httpx.MockTransport(handle))
+    provider = OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(handle))
     plan, _ = asyncio.run(
-        Engine(Config(), provider).plan("qué contiene registro.txt", Context(cwd=str(tmp_path)))
+        Engine(Config(ai={"command_only": False}), provider).plan("qué contiene registro.txt", Context(cwd=str(tmp_path)))
     )
     assert plan.trace.calls == 2 and plan.trace.inspections == 1 and plan.trace.output_tokens == 50
     assert "713" in plan.summary and plan.trace.source == "qwen"
@@ -106,7 +106,7 @@ def test_directory_alias_prefix_and_hidden_extension(tmp_path: Path, path: str) 
     downloads.mkdir()
     target = downloads / "Prueba.txt"
     target.touch()
-    plan, risk = asyncio.run(Engine(Config()).plan("borra " + path, Context(cwd=str(tmp_path), known_directories={"Downloads": str(downloads)})))
+    plan, risk = asyncio.run(Engine(Config(ai={"command_only": False})).plan("borra " + path, Context(cwd=str(tmp_path), known_directories={"Downloads": str(downloads)})))
     assert plan.actions[0].path == str(target) and risk.level == Risk.CONFIRM
     assert target.exists()
 
@@ -126,10 +126,10 @@ def test_fabricated_state_answer_is_not_presented(tmp_path: Path) -> None:
             },
         )
 
-    provider = OllamaProvider(Config().ai, httpx.MockTransport(handle))
+    provider = OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(handle))
     with pytest.raises(ProviderError, match="sin comprobar"):
         asyncio.run(
-            Engine(Config(), provider).plan("qué contiene registro.txt", Context(cwd=str(tmp_path)))
+            Engine(Config(ai={"command_only": False}), provider).plan("qué contiene registro.txt", Context(cwd=str(tmp_path)))
         )
 
 
@@ -185,7 +185,7 @@ def test_forced_model_bypasses_local_rule(tmp_path: Path) -> None:
             },
         )
 
-    config = Config()
+    config = Config(ai={"command_only": False})
     config.ai.prefer_model = True
     plan, _ = asyncio.run(
         Engine(config, OllamaProvider(config.ai, httpx.MockTransport(handle))).plan(
@@ -207,7 +207,7 @@ def test_explicit_summary_reads_target_before_single_model_call(tmp_path: Path) 
         assert evidence[0]["ok"] and "713" in evidence[0]["content"]
         assert "actions" not in body["format"]["properties"]
         return httpx.Response(200,json={"message":{"content":'{"intent":"explain","summary":"El contador es 713."}'},"eval_count":15})
-    cfg=Config()
+    cfg=Config(ai={"command_only": False})
     plan,_=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan("Resume registro.txt",Context(cwd=str(tmp_path))))
     assert len(calls)==1 and plan.trace.inspections==1 and "713" in plan.summary
 
@@ -219,7 +219,7 @@ def test_forced_creation_schema_has_no_shell_command_variant(tmp_path: Path) -> 
         body=json.loads(request.content)
         assert body["format"]["$defs"]["Action"]["properties"]["kind"]["const"]=="create"
         return httpx.Response(200,json={"message":{"content":Plan(intent="execute",shell="cmd",summary="Ya creado",actions=[Action(kind="create",path="saludo.txt",content="Hola")]).model_dump_json()}})
-    cfg=Config()
+    cfg=Config(ai={"command_only": False})
     cfg.ai.prefer_model=True
     plan,risk=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan('crea un archivo llamado saludo.txt con contenido "Hola"',Context(cwd=str(tmp_path))))
     assert risk.level==Risk.CONFIRM and "pendientes" in plan.summary
@@ -242,6 +242,6 @@ def test_unrecognized_query_wording_closes_inspection_round(tmp_path: Path) -> N
             assert evidence[0]['ok'] and '713' in evidence[0]['content']
             content='{"intent":"explain","summary":"El contador observado es 713."}'
         return httpx.Response(200,json={'message':{'content':content},'eval_count':15})
-    cfg=Config()
+    cfg=Config(ai={"command_only": False})
     plan,_=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan('Describe registro.txt',Context(cwd=str(tmp_path))))
     assert len(calls)==2 and plan.trace.inspections==1 and '713' in plan.summary

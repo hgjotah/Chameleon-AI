@@ -114,7 +114,8 @@ class SetupService:
                 )
         online, present = asyncio.run(provider.status())
         if online and not present and options.pull_model:
-            self.progress("Descargando " + config.ai.model + " (~2,5 GB); espera a la verificación final")
+            from chameleon.llm.models import model_description
+            self.progress("Descargando " + model_description(config.ai.model) + "; espera a la verificación final")
             asyncio.run(provider.pull(self.progress))
             manifest["downloaded_model"] = config.ai.model
             write_manifest(self.root, manifest)

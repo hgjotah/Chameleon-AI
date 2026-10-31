@@ -12,3 +12,11 @@ Chameleon source is MIT. Bundled components retain their own licenses:
 - Ollama and Qwen are separately downloaded from their official sources and not included as copied binaries/weights in Chameleon.
 
 Build scripts collect distribution license metadata into `Chameleon/_internal/chameleon/assets/licenses`. The Qt/Python licensing texts are included with the produced release. No proprietary font is bundled; Cascadia Mono and Consolas are used only if available on the system, with monospace fallback.
+# PyGlass Liquid Glass renderer
+
+Copyright (c) 2026 neomosh8. MIT License.
+Source: https://github.com/neomosh8/pyglass
+Revision: c12d91f1526badbe18f619ff893d2cdbbd86dac5.
+Complete effect.py/refract.py modules adapted from PyQt6 to PySide6. Full license
+and provenance: assets/licenses/pyglass/. NumPy's bundled notices are included
+under assets/licenses/numpy/.

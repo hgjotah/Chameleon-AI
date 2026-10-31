@@ -20,7 +20,7 @@ chameleon doctor
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
-En **0.4.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+En **0.5.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
 
 Setup muestra por separado Ollama instalado, servicio activo y Qwen descargado. Deja marcada **Preparar IA** para comprobar los tres pasos; si falta Ollama solicitará consentimiento antes de descargar su instalador oficial. Espera al resultado de la inferencia real. El terminal puede instalarse aunque la descarga falle, pero Setup indicará **IA pendiente** y permitirá reparar.
 
@@ -46,7 +46,9 @@ Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; C
 
 El panel lateral muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
 
-Las respuestas sobre archivos utilizan herramientas internas de lectura, listado, búsqueda y procesos. Qwen recibe resultados comprobados antes de responder. La inspección automática se limita a la carpeta actual y las carpetas conocidas; se acotan datos y tiempo de recorrido, indicando resultados parciales y errores. El modo estricto requiere lectura explícita. La inferencia CPU puede tardar; el estado identifica la consulta real y Ctrl+C la cancela.
+En 0.5.0 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay un reintento si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
+
+Elige **qwen3:4b-instruct** (~2,5 GB) o **qwen2.5:0.5b** (~398 MB) en Setup, Ajustes o el panel del terminal. En Ajustes puedes introducir otra etiqueta local y pulsar **Descargar si falta y probar modelo**. El modelo pequeño consume menos recursos y puede cometer más errores; la selección no cambia silenciosamente a otro modelo.
 
 El nombre sin extensión se compara con archivos reales de la carpeta indicada. Si hay un solo `Prueba.txt`, «borra Prueba» lo propone; con varios candidatos pide la ruta exacta. Reconoce `Downloads`, `Descargas` y sus subrutas, incluidas carpetas redirigidas de Windows.
 
@@ -54,7 +56,9 @@ Solo se contacta `http://127.0.0.1:11434`, sin proxies ni fallback cloud. Las re
 
 No hay telemetría. El historial permanente está **desactivado**. El contexto externo se limita a seis elementos redactados y caduca a los 30 minutos; identifica PID y fecha de creación para evitar reutilización de PID. No pretende observar comandos normales en terminales externas. La GUI conserva solo una cola limitada de salida en memoria. La redacción de secretos es básica, no infalible.
 
-El motor de riesgo es independiente del modelo: **SAFE**, **CONFIRM** (No por defecto), **BLOCKED**. No hay casilla que desactive BLOCKED. Los comandos opacos, intérpretes anidados, descargas y operaciones masivas de disco generadas por IA se bloquean. Las acciones normales escritas directamente mantienen el comportamiento de su shell.
+El acceso se elige en **Ajustes → Acceso del modelo**: Solo lectura, Equilibrado, Desarrollador, Personalizado o Acceso total. Personalizado permite elegir lectura, escritura, borrado, comandos, scripts, red, sistema y confirmaciones. Equilibrado es el predeterminado; Desarrollador permite ejecución arbitraria con confirmación. **Acceso total elimina los bloqueos y confirmaciones de Chameleon**, con los permisos que ya tenga tu usuario de Windows. No concede privilegios administrativos ni evita UAC/ACL. Estos controles son una política de la aplicación, no un sandbox del sistema; los scripts arbitrarios requieren todos los permisos de efectos porque pueden realizar cualquiera de esas operaciones. Los comandos escritos directamente siguen bajo tu control.
+
+La interfaz Liquid Glass reutiliza el motor óptico y compositor MIT de [PyGlass](https://github.com/neomosh8/pyglass), adaptados a PySide6. El fondo procede únicamente de la propia aplicación. El vidrio se almacena en caché y se limita su resolución para reducir CPU/RAM. La licencia y la revisión exacta están incluidas en la distribución.
 
 ## Construir desde código
 
@@ -72,8 +76,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.4.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.4.0-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.5.0-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.5.0-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

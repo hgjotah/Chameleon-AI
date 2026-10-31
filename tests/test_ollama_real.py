@@ -29,7 +29,7 @@ def test_real_structured_output(context: Context, prompt: str, kind: str | None)
     if os.environ.get("CHAMELEON_TEST_OLLAMA") != "1":
         pytest.skip("Set CHAMELEON_TEST_OLLAMA=1 to run actual local inference")
     # No external network route is accepted by this inference transport.
-    provider = OllamaProvider(Config().ai, LoopbackOnlyTransport())
+    provider = OllamaProvider(Config(ai={"command_only": False}).ai, LoopbackOnlyTransport())
     online, present = asyncio.run(provider.status())
     assert online and present
     plan = asyncio.run(provider.plan(prompt, context))

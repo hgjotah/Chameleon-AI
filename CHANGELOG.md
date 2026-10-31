@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 · 2026-10-31
+
+- Cinco perfiles de acceso: Solo lectura, Equilibrado, Desarrollador, Personalizado y Acceso total sin bloqueos/confirmaciones de aplicación.
+- Permisos independientes de lectura, escritura, borrado, comandos, scripts, red, sistema y confirmaciones. Los scripts arbitrarios requieren todos los permisos de efectos; Windows conserva su autoridad sobre privilegios y ACL.
+- Selección de qwen3:4b-instruct y qwen2.5:0.5b en Setup/Ajustes/Terminal; preparación, descarga y prueba del modelo seleccionado.
+- Salida predeterminada de un único comando nativo, sin prosa/JSON/Markdown; ejemplos específicos por shell, contexto de rutas literal y reintento ante cmdlets inexistentes o fuentes inventadas.
+- Planificador estructurado anterior disponible al desactivar «Responder sólo con el comando».
+- Interfaz de vidrio con refracción real basada en módulos MIT de PyGlass, adaptación PySide6 y NumPy; licencia/revisión atribuidas, caché acotada y sin captura del escritorio.
+- Cambio de modelo/perfil cancela una consulta en curso; la generación usa una instantánea de la configuración.
+- Puente CMD adapta llamadas a .cmd/.bat y variables FOR al contexto batch transitorio.
+
 ## 0.4.0 · 2026-10-11
 
 - Integración Ollama con streaming, progreso real de recepción y rechazo de respuestas interrumpidas o truncadas; cancelación conserva el control del terminal.

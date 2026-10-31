@@ -10,7 +10,21 @@ class Action(BaseModel):
     """Typed operations avoid shell interpolation for paths and environment values."""
 
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["cd", "list", "find", "read", "delete", "clear", "env", "processes", "command", "create", "mkdir", "copy", "move"]
+    kind: Literal[
+        "cd",
+        "list",
+        "find",
+        "read",
+        "delete",
+        "clear",
+        "env",
+        "processes",
+        "command",
+        "create",
+        "mkdir",
+        "copy",
+        "move",
+    ]
     path: str = Field(default="", max_length=4096)
     pattern: str = Field(default="*", max_length=256)
     recursive: bool = False
@@ -26,14 +40,24 @@ class Action(BaseModel):
 
     @model_validator(mode="after")
     def valid_fields(self) -> "Action":
-        for value in (self.path, self.pattern, self.command, self.name, self.value, self.destination):
+        for value in (
+            self.path,
+            self.pattern,
+            self.command,
+            self.name,
+            self.value,
+            self.destination,
+        ):
             if any(ord(c) < 32 for c in value):
                 raise ValueError("Control characters are not permitted in actions")
         if self.kind == "command" and not self.command.strip():
             raise ValueError("Empty command")
         if "\x00" in self.content:
             raise ValueError("NUL is not permitted in file content")
-        if self.kind in ("cd", "read", "delete", "create", "mkdir", "copy", "move") and not self.path:
+        if (
+            self.kind in ("cd", "read", "delete", "create", "mkdir", "copy", "move")
+            and not self.path
+        ):
             raise ValueError("Missing path")
         if self.kind in ("copy", "move") and not self.destination:
             raise ValueError("Missing destination")
@@ -51,7 +75,11 @@ class InferenceTrace(BaseModel):
     inspections: int = 0
 
     def label(self) -> str:
-        return "Regla local · sin inferencia" if self.source == "local" else f"Ollama · {self.model} · {self.calls} llamada(s) · {self.output_tokens} tokens · {self.duration_ms / 1000:.1f} s · {self.inspections} inspección(es)"
+        return (
+            "Regla local · sin inferencia"
+            if self.source == "local"
+            else f"Ollama · {self.model} · {self.calls} llamada(s) · {self.output_tokens} tokens · {self.duration_ms / 1000:.1f} s · {self.inspections} inspección(es)"
+        )
 
 
 class Plan(BaseModel):
@@ -66,6 +94,7 @@ class Plan(BaseModel):
     requires_admin: bool = False
     choices: list[str] = Field(default_factory=list, max_length=20)
     trace: InferenceTrace = Field(default_factory=InferenceTrace)
+    policy_token: str = Field(default="", max_length=4096)
 
     @model_validator(mode="after")
     def consistent(self) -> "Plan":
@@ -73,7 +102,9 @@ class Plan(BaseModel):
             raise ValueError("Execution requires actions")
         if self.intent not in ("execute", "inspect") and self.actions:
             raise ValueError("Non-execution plans cannot contain actions")
-        if self.intent == "inspect" and any(a.kind not in ("list", "find", "read", "processes") for a in self.actions):
+        if self.intent == "inspect" and any(
+            a.kind not in ("list", "find", "read", "processes") for a in self.actions
+        ):
             raise ValueError("Inspection supports only read-only typed queries")
         return self
 
@@ -84,7 +115,7 @@ def generation_schema() -> dict:
     # The wire protocol restores these defaults after validation. Asking a small
     # model to generate advisory risk flags wastes tokens and suggests authority
     # that only the independent risk engine actually has.
-    for name in ("version", "confidence", "model_risk", "requires_admin", "trace"):
+    for name in ("version", "confidence", "model_risk", "requires_admin", "trace", "policy_token"):
         schema["properties"].pop(name)
     schema["properties"]["summary"]["maxLength"] = 240
     schema["properties"]["actions"]["maxItems"] = 4

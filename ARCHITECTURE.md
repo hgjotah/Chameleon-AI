@@ -1,5 +1,27 @@
 # Architecture and implementation decisions
 
+## 0.5.0 generation and UI
+
+The default Ollama path generates one plain shell command, not a JSON envelope.
+The app validates it and wraps it into a typed `Plan` with a `command` action and
+trusted transport trace. Format/executable/source mistakes get one corrective
+retry. The previous constrained-schema planner remains selectable in Settings.
+Its inspection tools also check the selected read permission before accessing data.
+
+Access profiles are defined by `SafetyConfig`, checked by `safety/permissions.py`
+and applied consistently in CLI/GUI and the typed file helper. Full access removes
+application policy blocks/confirmations; Developer retains confirmation. Arbitrary
+scripts need all effect permissions; this does not implement an OS sandbox.
+
+The native Qt layout uses a PySide6 adapter over two complete MIT PyGlass modules:
+`effect.py` and `refract.py`, pinned at c12d91f1526badbe18f619ff893d2cdbbd86dac5.
+No desktop capture code is shipped. Backdrops are app-owned gradients; refraction
+kernels are resolution bounded and cached after resize, while hover animation uses
+the upstream compositor. NumPy is bundled in the shared runtime.
+
+The sections below describe the original structured planner and conservative
+profile; permanent-block statements there do not apply to Developer/Full profiles.
+
 ## Boundaries
 
 ```mermaid

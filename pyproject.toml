@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chameleon-ai"
-version = "0.4.0"
+version = "0.5.0"
 description = "Private local AI for real Windows shells"
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 license = "MIT"
-dependencies = ["pydantic==2.12.5", "httpx==0.28.1", "psutil==7.2.2", "tomli-w==1.2.0", "PySide6==6.10.2", "pywinpty==3.0.5; sys_platform == 'win32'"]
+dependencies = ["pydantic==2.12.5", "httpx==0.28.1", "psutil==7.2.2", "tomli-w==1.2.0", "PySide6==6.10.2", "numpy==2.5.4", "pywinpty==3.0.5; sys_platform == 'win32'"]
 
 [project.scripts]
 chameleon-core = "chameleon.cli:main"
@@ -29,6 +29,7 @@ testpaths = ["tests"]
 markers = ["windows: real Windows integration", "ollama: optional real local model", "gui: Qt WebEngine smoke"]
 
 [tool.ruff]
+extend-exclude = ["src/chameleon/ui/vendor"]
 line-length = 100
 target-version = "py313"
 
@@ -41,3 +42,7 @@ python_version = "3.13"
 check_untyped_defs = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["chameleon.ui.vendor.*"]
+ignore_errors = true

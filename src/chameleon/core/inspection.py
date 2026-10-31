@@ -26,7 +26,7 @@ def inspect_action(action: Action, context: Context) -> dict:
             Path(context.cwd).resolve(),
             *(Path(p).resolve() for p in context.known_directories.values()),
         ]
-        if action.kind != "processes" and not any(
+        if action.kind != "processes" and not context.permissions.get('system') and not any(
             target == p or target.is_relative_to(p) for p in allowed
         ):
             raise ValueError(

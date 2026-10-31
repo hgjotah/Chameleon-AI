@@ -37,6 +37,7 @@ class AIConfig(StrictSettings):
     show_generated_commands: bool = False
     prefer_model: bool = False
     num_threads: int = Field(default=4, ge=1, le=64)
+    command_only: bool = True
 
     @field_validator("model")
     @classmethod
@@ -62,6 +63,28 @@ class PrivacyConfig(StrictSettings):
 
 class SafetyConfig(StrictSettings):
     strict_mode: bool = False
+    mode: Literal["read_only", "balanced", "developer", "custom", "full"] = "balanced"
+    allow_read: bool = True
+    allow_write: bool = True
+    allow_delete: bool = True
+    allow_commands: bool = True
+    allow_scripts: bool = False
+    allow_network: bool = False
+    allow_system: bool = False
+    confirm_changes: bool = True
+
+    def permissions(self) -> dict[str, bool]:
+        names = ("read", "write", "delete", "commands", "scripts", "network", "system")
+        if self.mode in ("developer", "full"):
+            return dict.fromkeys(names, True)
+        if self.mode == "read_only":
+            return {name: name == "read" for name in names}
+        if self.mode == "balanced":
+            return {name: name in ("read", "write", "delete", "commands") for name in names}
+        return {name: bool(getattr(self, "allow_" + name)) for name in names}
+
+    def confirms(self) -> bool:
+        return self.mode != "full" and (self.mode != "custom" or self.confirm_changes)
 
 
 class GeneralConfig(StrictSettings):

@@ -10,6 +10,7 @@ from PySide6.QtCore import QEasingCurve, QObject, QPropertyAnimation, QTimer, Si
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFrame,
     QGraphicsOpacityEffect,
     QHBoxLayout,
@@ -25,7 +26,8 @@ from PySide6.QtWidgets import (
 )
 
 from chameleon import __version__
-from chameleon.core.config import data_dir, load_config
+from chameleon.core.config import data_dir, load_config, save_config
+from chameleon.llm.models import MODELS, model_description
 from chameleon.platform.windows.installer import (
     read_manifest,
     remove_installation,
@@ -35,6 +37,7 @@ from chameleon.platform.windows.system import hidden_run, launch, shell_executab
 from chameleon.setup.ollama_install import ollama_executable
 from chameleon.setup.service import InstallOptions, SetupService
 from chameleon.terminal.app import create_application
+from chameleon.ui.glass import GlassCanvas, GlassFrame
 from chameleon.ui.widgets import BrandMark, MotionButton, StatusPill
 
 
@@ -54,12 +57,12 @@ class SetupWindow(QMainWindow):
         self.setWindowTitle("Chameleon Setup")
         self.resize(1100, 820)
         self.setMinimumSize(900, 620)
-        body = QWidget()
+        body = GlassCanvas()
         self.setCentralWidget(body)
         outer = QHBoxLayout(body)
         outer.setContentsMargins(24, 24, 24, 24)
         outer.setSpacing(30)
-        rail = QFrame()
+        rail = GlassFrame()
         rail.setObjectName("heroCard")
         rail.setFixedWidth(310)
         left = QVBoxLayout(rail)
@@ -72,12 +75,18 @@ class SetupWindow(QMainWindow):
         headline = QLabel("Tu terminal.\nAhora habla\ntu idioma.")
         headline.setStyleSheet("font-size:34px;font-weight:600;color:#eef7f4")
         left.addWidget(headline)
-        description = QLabel("Un espacio para trabajar con calma.\nQwen en local, acciones claras\ny el control siempre en tus manos.")
+        description = QLabel(
+            "Un espacio para trabajar con calma.\nQwen en local, acciones claras\ny el control siempre en tus manos."
+        )
         description.setObjectName("muted")
         left.addWidget(description)
         left.addSpacing(12)
         self.steps: list[QLabel] = []
-        for number, step_title, note in (("01", "Tu espacio de trabajo", "Terminal · CMD · PowerShell"), ("02", "Conecta tu IA local", "Ollama · Qwen descargado"), ("03", "Comprueba y empieza", "Una llamada real al modelo")):
+        for number, step_title, note in (
+            ("01", "Tu espacio de trabajo", "Terminal · CMD · PowerShell"),
+            ("02", "Conecta tu IA local", "Ollama · Qwen descargado"),
+            ("03", "Comprueba y empieza", "Una llamada real al modelo"),
+        ):
             heading = QLabel(number + "  /  " + step_title)
             heading.setObjectName("setupStep")
             self.steps.append(heading)
@@ -100,15 +109,21 @@ class SetupWindow(QMainWindow):
         title.setObjectName("heading")
         title.setWordWrap(True)
         right.addWidget(title)
-        description = QLabel("Prepara el terminal y comprueba Qwen en pocos pasos.\nTus preferencias y perfiles se conservan al actualizar.")
+        description = QLabel(
+            "Prepara el terminal y comprueba Qwen en pocos pasos.\nTus preferencias y perfiles se conservan al actualizar."
+        )
         description.setObjectName("muted")
         right.addWidget(description)
         right.addSpacing(4)
-        summary = QFrame()
+        summary = GlassFrame()
         summary.setObjectName("summaryCard")
         summary_row = QHBoxLayout(summary)
         summary_row.setContentsMargins(18, 15, 18, 15)
-        for top, bottom in (("CHAMELEON " + __version__, "Windows · 64 bits"), ("100 % LOCAL", "Sin cuenta ni suscripción"), ("TÚ DECIDES", "Cambios con confirmación")):
+        for top, bottom in (
+            ("CHAMELEON " + __version__, "Windows · 64 bits"),
+            ("100 % LOCAL", "Sin cuenta ni suscripción"),
+            ("TÚ DECIDES", "Cambios con confirmación"),
+        ):
             column = QVBoxLayout()
             heading = QLabel(top)
             heading.setObjectName("eyebrow")
@@ -119,7 +134,7 @@ class SetupWindow(QMainWindow):
             column.addWidget(caption)
             summary_row.addLayout(column)
         right.addWidget(summary)
-        options = QFrame()
+        options = GlassFrame()
         options.setObjectName("card")
         choices = QVBoxLayout(options)
         choices.setContentsMargins(18, 14, 18, 14)
@@ -127,14 +142,27 @@ class SetupWindow(QMainWindow):
         option_title = QLabel("Personaliza la instalación")
         option_title.setStyleSheet("font-size:16px;font-weight:600;color:#e5efed;margin-bottom:6px")
         choices.addWidget(option_title)
+        self.model_choice = QComboBox()
+        self.model_choice.addItems(list(MODELS))
+        existing_config, _ = load_config(self.root)
+        if existing_config.ai.model not in MODELS:
+            self.model_choice.addItem(existing_config.ai.model)
+        self.model_choice.setCurrentText(existing_config.ai.model)
+        choices.addWidget(self.model_choice)
         self.ollama = QCheckBox("Instalar Ollama oficial si falta")
-        self.ollama.setToolTip("Solo con tu consentimiento. Descarga de ollama.com con firma verificada.")
+        self.ollama.setToolTip(
+            "Solo con tu consentimiento. Descarga de ollama.com con firma verificada."
+        )
         self.ollama.setChecked(False)
         choices.addWidget(self.ollama)
         self.model = QCheckBox("Preparar IA: Ollama + Qwen y prueba real")
         self.model.setChecked(True)
         choices.addWidget(self.model)
-        size = QLabel("     ~2,5 GB · se reutiliza el modelo si ya está instalado")
+        size = QLabel(model_description(self.model_choice.currentText()))
+        size.setWordWrap(True)
+        self.model_choice.currentTextChanged.connect(
+            lambda tag: size.setText(model_description(tag))
+        )
         size.setObjectName("muted")
         size.setStyleSheet("font-size:11px;color:#8b9eb5")
         choices.addWidget(size)
@@ -168,11 +196,22 @@ class SetupWindow(QMainWindow):
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(500)
-        self.log.setStyleSheet("QPlainTextEdit{background:#0b1a20;border:1px solid #274044;border-radius:12px;padding:12px;color:#a0c2bc;font-family:Consolas;font-size:11px}")
+        self.log.setStyleSheet(
+            "QPlainTextEdit{background:#0b1a20;border:1px solid #274044;border-radius:12px;padding:12px;color:#a0c2bc;font-family:Consolas;font-size:11px}"
+        )
         self.log.setMinimumHeight(125)
         right.addWidget(self.log, 1)
         self.buttons: list[QPushButton] = []
-        actions = [("Abrir terminal", self.open_terminal), ("Reparar", self.start_install), ("Actualizar", self.start_install), ("Desinstalar", self.uninstall)] if existing else [("Instalar Chameleon", self.start_install)]
+        actions = (
+            [
+                ("Abrir terminal", self.open_terminal),
+                ("Reparar", self.start_install),
+                ("Actualizar", self.start_install),
+                ("Desinstalar", self.uninstall),
+            ]
+            if existing
+            else [("Instalar Chameleon", self.start_install)]
+        )
         action_row = QHBoxLayout()
         for index, (name, callback) in enumerate(actions):
             button = MotionButton(name, primary=index == 0)
@@ -189,7 +228,9 @@ class SetupWindow(QMainWindow):
         self.signals.progress.connect(self.on_progress)
         self.signals.done.connect(self.finished)
         self.signals.failed.connect(self.failed)
-        self.log.appendPlainText("Qwen ocupa ~2,5 GB y se descarga durante la instalación si falta.\nLa IA se marca lista después de una respuesta real de Ollama.")
+        self.log.appendPlainText(
+            "Qwen ocupa ~2,5 GB y se descarga durante la instalación si falta.\nLa IA se marca lista después de una respuesta real de Ollama."
+        )
         QTimer.singleShot(0, self.check_dependencies)
         right_body = QWidget()
         # Keep actions visible even when a small screen needs content scrolling.
@@ -214,18 +255,31 @@ class SetupWindow(QMainWindow):
         self.entrance.start()
         self.elapsed_timer = QTimer(self)
         self.elapsed_timer.setInterval(1000)
-        self.elapsed_timer.timeout.connect(lambda: self.state.set_state(f"Preparando · {int(time.monotonic() - self.started)} s", "#87e6bc", True))
+        self.elapsed_timer.timeout.connect(
+            lambda: self.state.set_state(
+                f"Preparando · {int(time.monotonic() - self.started)} s", "#87e6bc", True
+            )
+        )
 
     def on_progress(self, message: str) -> None:
         self.log.appendPlainText(message)
         if message.startswith("COMPONENTES:"):
             self.dependencies.setText(message.removeprefix("COMPONENTES: "))
             return
-        phase = 2 if any(word in message for word in ("inferencia", "inference", "Qwen")) else 1 if any(word in message for word in ("Ollama", "download", "descarg")) else 0
+        phase = (
+            2
+            if any(word in message for word in ("inferencia", "inference", "Qwen"))
+            else 1
+            if any(word in message for word in ("Ollama", "download", "descarg"))
+            else 0
+        )
         for index, heading in enumerate(self.steps):
-            heading.setStyleSheet("font-weight:600;color:" + ("#86e5b9" if index <= phase else "#678c88"))
+            heading.setStyleSheet(
+                "font-weight:600;color:" + ("#86e5b9" if index <= phase else "#678c88")
+            )
         if self.busy:
             import re
+
             percent = re.search(r"(\d+)%", message)
             self.progress_animation.stop()
             self.progress.setRange(0, 100 if percent else 0)
@@ -236,11 +290,22 @@ class SetupWindow(QMainWindow):
         import asyncio
 
         from chameleon.llm.ollama import OllamaProvider
+
         config, _ = load_config(self.root)
         executable = ollama_executable()
+
         def worker() -> None:
             online, model = asyncio.run(OllamaProvider(config.ai).status())
-            self.signals.progress.emit("COMPONENTES: Ollama " + ("instalado" if executable else "sin ejecutable local") + " · servicio " + ("activo" if online else "detenido") + " · " + config.ai.model + (" descargado" if model else " pendiente de comprobar/descargar"))
+            self.signals.progress.emit(
+                "COMPONENTES: Ollama "
+                + ("instalado" if executable else "sin ejecutable local")
+                + " · servicio "
+                + ("activo" if online else "detenido")
+                + " · "
+                + config.ai.model
+                + (" descargado" if model else " pendiente de comprobar/descargar")
+            )
+
         threading.Thread(target=worker, daemon=True, name="Dependency check").start()
 
     def open_terminal(self) -> None:
@@ -263,12 +328,13 @@ class SetupWindow(QMainWindow):
             self.policy.isChecked(),
             self.desktop.isChecked(),
         )
+        selected_model = self.model_choice.currentText()
         if (allow_ollama or pull) and not ollama_executable():
             if (
                 QMessageBox.question(
                     self,
                     "Software externo",
-                    "Para preparar la IA falta Ollama. ¿Instalarlo desde ollama.com con firma verificada y descargar Qwen (~2,5 GB) si falta?",
+                    "Para preparar la IA falta Ollama. ¿Instalarlo desde ollama.com con firma verificada y preparar el modelo seleccionado si falta?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
                 )
@@ -291,6 +357,7 @@ class SetupWindow(QMainWindow):
         self.progress.setRange(0, 0)
         self.state.set_state("Instalando…", "#81e3bc", True)
         self.busy = True
+        self.model_choice.setEnabled(False)
         self.started = time.monotonic()
         self.elapsed_timer.start()
         for option in (self.ollama, self.model, self.policy, self.desktop):
@@ -304,6 +371,9 @@ class SetupWindow(QMainWindow):
                 if not (payload / "ChameleonCore.exe").exists():
                     payload = Path.cwd() / "dist" / "Chameleon"
                 service = SetupService(self.root, payload, self.signals.progress.emit)
+                selected_config, _ = load_config(self.root)
+                selected_config.ai.model = selected_model
+                save_config(selected_config, self.root)
                 self.signals.done.emit(
                     service.run(InstallOptions(allow_ollama, pull, policy, desktop))
                 )
@@ -314,18 +384,24 @@ class SetupWindow(QMainWindow):
 
     def finished(self, message: str) -> None:
         self.busy = False
+        self.model_choice.setEnabled(True)
         self.elapsed_timer.stop()
         self.progress_animation.stop()
         self.progress.setRange(0, 1)
         self.progress.setValue(1)
         self.log.appendPlainText(message)
         self.check_dependencies()
-        self.state.set_state("IA pendiente" if "necesita atención" in message else "Instalación completada", "#e6c275" if "necesita atención" in message else "#81e3bc")
+        self.state.set_state(
+            "IA pendiente" if "necesita atención" in message else "Instalación completada",
+            "#e6c275" if "necesita atención" in message else "#81e3bc",
+        )
         for option in (self.ollama, self.model, self.policy, self.desktop):
             option.setEnabled(True)
         for button in self.buttons:
             button.setEnabled(True)
-        if (self.root / "core/ChameleonTerminal.exe").is_file() and self.primary_button.text() == "Instalar Chameleon":
+        if (
+            self.root / "core/ChameleonTerminal.exe"
+        ).is_file() and self.primary_button.text() == "Instalar Chameleon":
             self.primary_button.clicked.disconnect()
             self.primary_button.clicked.connect(self.open_terminal)
             self.primary_button.setText("Abrir mi terminal")
@@ -434,7 +510,12 @@ def main(argv: list[str] | None = None) -> int:
         dialog.show()
         return app.exec()
     payload = Path(args[args.index("--payload") + 1]) if "--payload" in args else None
-    if getattr(sys, "frozen", False) and payload is None and "uninstall" not in args and "--smoke" not in args:
+    if (
+        getattr(sys, "frozen", False)
+        and payload is None
+        and "uninstall" not in args
+        and "--smoke" not in args
+    ):
         current = Path(sys.executable).parent.resolve()
         if current == (data_dir() / "core").resolve():
             temp = Path(tempfile.mkdtemp(prefix="chameleon-repair-"))
@@ -444,27 +525,48 @@ def main(argv: list[str] | None = None) -> int:
             preparing.busy = True
             preparing.progress.setRange(0, 0)
             preparing.state.set_state("Preparando Reparar…", "#81e3bc", True)
-            preparing.log.appendPlainText("Preparando una copia temporal para actualizar los archivos en uso. La ventana seguirá respondiendo.")
-            for control in (*preparing.buttons, preparing.ollama, preparing.model, preparing.policy, preparing.desktop):
+            preparing.log.appendPlainText(
+                "Preparando una copia temporal para actualizar los archivos en uso. La ventana seguirá respondiendo."
+            )
+            for control in (
+                *preparing.buttons,
+                preparing.ollama,
+                preparing.model,
+                preparing.policy,
+                preparing.desktop,
+            ):
                 control.setEnabled(False)
             preparing.show()
+
             def relocated(message: str) -> None:
                 try:
-                    launch([str(temp / "ChameleonSetup.exe"), "--payload", str(temp), "--cleanup", str(temp)], creationflags=0x08000000)
+                    launch(
+                        [
+                            str(temp / "ChameleonSetup.exe"),
+                            "--payload",
+                            str(temp),
+                            "--cleanup",
+                            str(temp),
+                        ],
+                        creationflags=0x08000000,
+                    )
                     preparing.busy = False
                     preparing.close()
                     app.quit()
                 except OSError as exc:
                     preparing.failed(str(exc))
+
             relocation = WorkerSignals(preparing)
             relocation.done.connect(relocated)
             relocation.failed.connect(preparing.failed)
+
             def copy_runtime() -> None:
                 try:
                     shutil.copytree(current, temp, dirs_exist_ok=True)
                     relocation.done.emit("Preparado")
                 except OSError as exc:
                     relocation.failed.emit(str(exc))
+
             threading.Thread(target=copy_runtime, daemon=True, name="Repair preparation").start()
             return app.exec()
     window = SetupWindow(payload)

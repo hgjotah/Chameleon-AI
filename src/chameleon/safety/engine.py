@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 
+from chameleon.core.config import SafetyConfig
 from chameleon.core.schemas import Action, Plan
+from chameleon.safety.permissions import denied
 
 
 class Risk(IntEnum):
@@ -23,11 +25,19 @@ class Assessment:
 class RiskEngine:
     """Conservative independent policy. Model risk/confidence never grant permission."""
 
-    def __init__(self, system_root: str = "C:\\Windows", strict: bool = False) -> None:
+    def __init__(
+        self,
+        system_root: str = "C:\\Windows",
+        strict: bool = False,
+        policy: SafetyConfig | None = None,
+    ) -> None:
         self.system_root = ntpath.normcase(ntpath.normpath(system_root))
         self.strict = strict
+        self.policy = policy or SafetyConfig()
 
     def protected(self, value: str) -> bool:
+        if self.policy.permissions()["system"]:
+            return False
         path = ntpath.normcase(ntpath.normpath(value.strip('"\x27 ')))
         drive, tail = ntpath.splitdrive(path)
         if drive and tail in ("", "\\", "/"):
@@ -40,6 +50,14 @@ class RiskEngine:
         )
 
     def action(self, action: Action, cwd: Path) -> Assessment:
+        reason = denied(action, self.policy)
+        if reason:
+            return Assessment(Risk.BLOCKED, reason)
+        if self.policy.mode in ("full", "developer"):
+            return Assessment(
+                Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
+                "Acceso " + self.policy.mode + " · permisos del usuario de Windows.",
+            )
         if action.kind in ("create", "mkdir", "copy", "move"):
             from chameleon.core.files import validate_target
 
@@ -49,14 +67,27 @@ class RiskEngine:
             except ValueError as exc:
                 return Assessment(Risk.BLOCKED, str(exc))
             if self.protected(str(target)) or action.kind == "move" and self.protected(action.path):
-                return Assessment(Risk.BLOCKED, "Elige una carpeta de usuario; no se modifican directorios protegidos del sistema.")
+                return Assessment(
+                    Risk.BLOCKED,
+                    "Elige una carpeta de usuario; no se modifican directorios protegidos del sistema.",
+                )
             if target.exists():
-                return Assessment(Risk.BLOCKED, f"Ya existe {target}. No se sobrescribió nada; elige otro nombre.")
+                return Assessment(
+                    Risk.BLOCKED, f"Ya existe {target}. No se sobrescribió nada; elige otro nombre."
+                )
             if action.kind != "mkdir" and not target.parent.is_dir():
-                return Assessment(Risk.BLOCKED, f"La carpeta de destino no existe: {target.parent}. Crea primero esa carpeta.")
+                return Assessment(
+                    Risk.BLOCKED,
+                    f"La carpeta de destino no existe: {target.parent}. Crea primero esa carpeta.",
+                )
             if action.kind in ("copy", "move") and not (cwd / action.path).is_file():
                 return Assessment(Risk.BLOCKED, "El archivo de origen no existe.")
-            return Assessment(Risk.CONFIRM, "Se creará una carpeta." if action.kind == "mkdir" else "Se modifican archivos. Revisa el destino y el contenido.")
+            return Assessment(
+                Risk.CONFIRM,
+                "Se creará una carpeta."
+                if action.kind == "mkdir"
+                else "Se modifican archivos. Revisa el destino y el contenido.",
+            )
         if action.kind == "delete":
             resolved = str((cwd / action.path).resolve())
             if self.protected(resolved) or self.protected(action.path):
@@ -83,13 +114,56 @@ class RiskEngine:
             if action.kind in ("cd", "list", "find") and not (cwd / action.path).is_dir():
                 return Assessment(Risk.BLOCKED, "La ruta debe ser una carpeta existente.")
             if action.kind == "read" and not (cwd / action.path).is_file():
-                return Assessment(Risk.BLOCKED, "Selecciona un archivo existente para leer su contenido.")
+                return Assessment(
+                    Risk.BLOCKED, "Selecciona un archivo existente para leer su contenido."
+                )
             return Assessment(
                 Risk.CONFIRM if self.strict else Risk.SAFE, "Operación de consulta o navegación."
             )
         return self.command(action.command, cwd)
 
     def command(self, command: str, cwd: Path | None = None) -> Assessment:
+        reason = denied(Action(kind="command", command=command), self.policy)
+        if reason:
+            return Assessment(Risk.BLOCKED, reason)
+        if (
+            self.policy.mode in ("full", "developer")
+            or self.policy.mode == "custom"
+            and self.policy.permissions()["scripts"]
+        ):
+            return Assessment(
+                Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
+                "Comando permitido por tu perfil de acceso.",
+            )
+        if self.policy.mode == "custom":
+            if cwd is not None and re.search(
+                r"\b(?:del|erase|rd|rmdir|rm|remove-item|move|copy|ren|set-content|out-file)\b",
+                command,
+                re.I,
+            ):
+                for argument in re.findall(r'"[^"]*"|\x27[^\x27]*\x27|\S+', command):
+                    value = argument.strip('"\x27')
+                    if value.startswith(("/", "-")):
+                        continue
+                    if self.protected(str((cwd / value).resolve())):
+                        return Assessment(
+                            Risk.BLOCKED, "Destino del sistema desactivado en este perfil."
+                        )
+            return Assessment(
+                Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
+                "Permisos personalizados: revisa el comando.",
+            )
+        from chameleon.safety.permissions import READ_COMMANDS
+
+        pieces = re.split(r"&&|\|\||[&;|]", command)
+        if (
+            not re.search(r"[<>^%!`$(){}]", command)
+            and pieces
+            and all(piece.strip().split(" ", 1)[0].casefold() in READ_COMMANDS for piece in pieces)
+        ):
+            return Assessment(
+                Risk.CONFIRM if self.strict else Risk.SAFE, "Consulta de sólo lectura."
+            )
         lowered = command.casefold()
         first_match = re.match(r'\s*["\x27]?([^\s"\x27]+)', lowered)
         first = ntpath.basename(first_match.group(1)).removesuffix(".exe") if first_match else ""
@@ -207,6 +281,11 @@ class RiskEngine:
         )
 
     def assess(self, plan: Plan, cwd: Path) -> Assessment:
+        if self.policy.mode in ("full", "developer"):
+            return Assessment(
+                Risk.CONFIRM if plan.actions and self.policy.confirms() else Risk.SAFE,
+                "Perfil " + self.policy.mode + " · permisos del usuario de Windows.",
+            )
         decisions = []
         current = cwd
         for action in plan.actions:
@@ -229,7 +308,9 @@ class RiskEngine:
             return Assessment(Risk.SAFE, "Sin ejecución.")
         worst = max(decisions, key=lambda d: d.level)
         return Assessment(
-            worst.level,
+            Risk.SAFE
+            if worst.level == Risk.CONFIRM and not self.policy.confirms()
+            else worst.level,
             worst.reason,
             any(d.requires_admin for d in decisions),
         )

@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix="chameleon-frozen-") as directory:
         env.pop(variable, None)
     checks = []
     version = run([str(root / "core" / "ChameleonCore.exe"), "version"], env, temp)
-    assert "0.4.0" in version
+    assert "0.5.0" in version
     checks.append("Frozen Core version")
     if "--ai" in sys.argv:
         config = Config()
@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory(prefix="chameleon-frozen-") as directory:
         encoding="utf-8",
     )
     result = run(["cmd.exe", "/d", "/c", str(script)], env, temp)
-    assert "RESULT:" + str(target) in result and "cd /d" not in result
+    assert "RESULT:" + str(target) in result and "Origen:" not in result
     assert not list((root / "runtime" / "actions").glob("*.cmd"))
     checks.append("Frozen CMD parent cwd and temporary cleanup")
     for shell in ("powershell", "pwsh"):

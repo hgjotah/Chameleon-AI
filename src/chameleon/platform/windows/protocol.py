@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -19,7 +20,7 @@ def action_directory(root: Path) -> Path:
 
 
 def emit_cmd(plan: Plan, cwd: Path, root: Path) -> str:
-    adapter = CmdAdapter()
+    adapter = CmdAdapter(plan.policy_token)
     commands = [adapter.render(a, cwd) for a in plan.actions]
     token = secrets.token_hex(16)
     directory = action_directory(root)
@@ -39,6 +40,22 @@ def emit_cmd(plan: Plan, cwd: Path, root: Path) -> str:
             exports.append(command)
             continue
         else:
+            if action.kind == "command" and re.match(
+                r"""\s*(?:"[^"]+\.(?:cmd|bat)"|'[^']+\.(?:cmd|bat)'|\S+\.(?:cmd|bat))(?:\s|$)""",
+                command,
+                re.I,
+            ):
+                command = "call " + command
+            # Model commands target interactive CMD; FOR variables need the
+            # batch spelling inside this transient execution bridge.
+            if action.kind == "command" and re.match(r"\s*for\b", command, re.I):
+                variable = re.search(r"%{1,2}([A-Za-z])\s+in\b", command, re.I)
+                if variable:
+                    command = re.sub(
+                        r"(?<!%)%" + re.escape(variable[1]) + r"(?![A-Za-z0-9_]*%)",
+                        "%%" + variable[1],
+                        command,
+                    )
             lines.append("@" + command)
         lines.extend(["@if errorlevel 1 goto chameleon_error"])
     export_text = " & ".join(exports)

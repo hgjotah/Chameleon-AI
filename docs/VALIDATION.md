@@ -1,4 +1,65 @@
-# Delivery validation · 0.4.0 · 2026-10-11
+# Delivery validation · 0.5.0 · 2026-10-31
+
+## Current release · 0.5.0
+
+Ruff passed and mypy passed 54 source files. The complete non-model suite passed:
+**198 passed, 1 skipped, 4 deselected**. This includes profile
+permission matrices, read-only mutation/script checks, arbitrary full-access
+assessment, independent delete/network/write switches, script effect requirements,
+command-only format/retry, wrong-existing-source correction, literal CMD environment
+export, real CMD FOR/script execution and app-authored policy handoff to helpers.
+Explicit requests to execute an existing script use a direct verified invocation;
+forced model translation receives that invocation and rejects replacement code or
+extra interpreter wrappers. Missing scripts fail before execution.
+The model cannot inject a Full policy through its JSON plan: the engine overwrites
+the execution policy snapshot with the user's chosen configuration.
+
+Twelve actual local inference cases passed, without changing model tags: each of
+qwen2.5:0.5b and qwen3:4b-instruct generated hostname, directory creation and literal
+file deletion commands for CMD and PowerShell. All replies were plain single-line
+commands. Proposals were assessed but the model-generated delete cases were not
+executed. Observed qwen2.5 times were 1.202–2.744 s; qwen3 times were 4.909–9.608 s.
+These are host/run measurements, not universal latency or semantic guarantees.
+Evidence: `artifacts/models05-real.json`. Initial tests caught invented cmdlets,
+JSON-escaped Windows paths and a misspelled temporary directory; command discovery,
+literal context, relative-source instructions and source validation were added.
+
+Both source GUI scenarios passed eight real Qt/xterm/ConPTY checks each, including
+normal commands, persistent cwd, native REPL, literal Unicode content and declined/
+accepted creation. A separate native settings test verified Full's effective
+permissions/no confirmation, editable Custom controls, selected-model persistence
+and runtime profile switching. It used an isolated QA home.
+
+The Liquid Glass renderer reuses complete MIT PyGlass modules at revision
+`c12d91f1526badbe18f619ff893d2cdbbd86dac5`, adapted to PySide6. License and provenance
+are bundled. Refraction reads only app-painted pixels and caches bounded kernels;
+no desktop capture modules are imported. Source screenshots are in ignored
+`artifacts/preview03/` (directory name retained from the existing capture helper).
+
+Final frozen verification passed all **52 bundled modules**, exact source assets,
+embedded payload/logo checks and ten executable smoke scenarios including Qt,
+Setup/Settings, CMD/PowerShell, DPI 1.25/1.5 and a missing model. The full NumPy
+wheel license hierarchy is retained, including its 45,831-byte main/bundled notice;
+license files with equal basenames no longer overwrite each other.
+
+The real account is updated to 0.5.0. Doctor passed all 12 checks in the verification
+environment. An independently frozen controller verified installed creation and
+confirmed hidden-extension deletion in CMD, Windows PowerShell and PowerShell 7.
+Both installed GUI scenarios passed actual qwen2.5 command-only file reads, native
+file output, confirmed literal creation and a normal command after the response.
+Full-access CLI tests invoked existing CMD and PowerShell scripts using the actual
+qwen2.5 model with noninteractive confirmation disabled; both emitted the expected
+QA marker. These tests used isolated data homes and harmless scripts only.
+
+The physical installed Core equals the distribution Core by SHA256. Existing
+preference values, exact profile bytes and the user PATH are preserved; new settings
+default to Balanced and command-only. Evidence is in `artifacts/build05-final.log`,
+`artifacts/installed-update05.log`, `artifacts/scripts05-native.log`,
+`artifacts/installed-native05.log`, `artifacts/frozen-ai05/` and native before/after
+receipts. No destructive Full-access disk/system command is executed during QA;
+such strings are assessment-only tests. A clean Windows VM remains untested.
+
+## Historical release · 0.4.0 · 2026-10-11
 
 ## Current release · 0.4.0
 

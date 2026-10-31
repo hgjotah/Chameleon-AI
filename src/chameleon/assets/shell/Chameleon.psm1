@@ -13,7 +13,8 @@ function global:chameleon {
             switch ($action.kind) {
                 { $_ -in 'create','mkdir','copy','move' } {
                     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($action | ConvertTo-Json -Compress)))
-                    & $core apply --encoded $encoded
+                    if ($plan.policy_token) { & $core apply --encoded $encoded --policy $plan.policy_token }
+                    else { & $core apply --encoded $encoded }
                     if ($LASTEXITCODE -ne 0) { throw 'No se pudo completar la acción de archivo; las acciones siguientes se cancelaron.' }
                 }
                 'cd' { Set-Location -LiteralPath $action.path -ErrorAction Stop }

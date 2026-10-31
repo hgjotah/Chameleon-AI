@@ -38,8 +38,8 @@ jobs:
           name: ChameleonAI-windows-x64
           path: |
             dist/ChameleonSetup.exe
-            dist/ChameleonAI-0.4.0-windows-x64.zip
-            dist/ChameleonAI-0.4.0-source.zip
+            dist/ChameleonAI-0.5.0-windows-x64.zip
+            dist/ChameleonAI-0.5.0-source.zip
             dist/SHA256SUMS.json
             artifacts/tests.xml
             artifacts/frozen/results.json

@@ -7,7 +7,7 @@ from chameleon.core.schemas import Action
 from chameleon.platform.base import ShellAdapter
 
 
-def query_command(action: Action, powershell: bool = False) -> str:
+def query_command(action: Action, powershell: bool = False, policy_token: str = "") -> str:
     encoded = base64.b64encode(action.model_dump_json().encode("utf-8")).decode("ascii")
     quote = ps_quote if powershell else cmd_quote
     if getattr(sys, "frozen", False):
@@ -17,9 +17,17 @@ def query_command(action: Action, powershell: bool = False) -> str:
         command = quote(sys.executable) + " -m chameleon"
     operation = "apply" if action.kind in ("create", "mkdir", "copy", "move") else "query"
     result = ("& " if powershell else "") + command + " " + operation + " --encoded " + encoded
+    if policy_token:
+        result += " --policy " + quote(policy_token)
     if not powershell and len(result) > 7900:
-        raise ValueError("La acción supera la longitud máxima de CMD. Reduce el contenido o usa una sesión PowerShell.")
-    return result + ("; if ($LASTEXITCODE -ne 0) { throw 'Chameleon: no se pudo completar la acción' }" if powershell else "")
+        raise ValueError(
+            "La acción supera la longitud máxima de CMD. Reduce el contenido o usa una sesión PowerShell."
+        )
+    return result + (
+        "; if ($LASTEXITCODE -ne 0) { throw 'Chameleon: no se pudo completar la acción' }"
+        if powershell
+        else ""
+    )
 
 
 def needs_query(action: Action) -> bool:
@@ -32,11 +40,30 @@ def needs_query(action: Action) -> bool:
 
 def describe_action(action: Action, cwd: Path, powershell: bool = False) -> str:
     if action.kind in ("delete", "read"):
-        return ("Eliminar permanentemente" if action.kind == "delete" else "Leer archivo") + "\nRuta: " + action.path + ("\nIncluye su contenido completo." if action.recursive else "")
+        return (
+            ("Eliminar permanentemente" if action.kind == "delete" else "Leer archivo")
+            + "\nRuta: "
+            + action.path
+            + ("\nIncluye su contenido completo." if action.recursive else "")
+        )
     if action.kind in ("create", "mkdir", "copy", "move"):
-        names = {"create": "Crear archivo UTF-8 (sin sobrescribir)", "mkdir": "Crear carpeta", "copy": "Copiar archivo (sin sobrescribir)", "move": "Mover archivo (sin sobrescribir)"}
-        content = "".join(char if ord(char) >= 32 or char in "\n\t" else f"\\x{ord(char):02x}" for char in action.content)
-        return names[action.kind] + "\nRuta: " + action.path + ("\nDestino: " + action.destination if action.destination else "") + ("\nContenido:\n" + content if action.kind == "create" else "")
+        names = {
+            "create": "Crear archivo UTF-8 (sin sobrescribir)",
+            "mkdir": "Crear carpeta",
+            "copy": "Copiar archivo (sin sobrescribir)",
+            "move": "Mover archivo (sin sobrescribir)",
+        }
+        content = "".join(
+            char if ord(char) >= 32 or char in "\n\t" else f"\\x{ord(char):02x}"
+            for char in action.content
+        )
+        return (
+            names[action.kind]
+            + "\nRuta: "
+            + action.path
+            + ("\nDestino: " + action.destination if action.destination else "")
+            + ("\nContenido:\n" + content if action.kind == "create" else "")
+        )
     return (PowerShellAdapter() if powershell else CmdAdapter()).render(action, cwd)
 
 
@@ -54,9 +81,12 @@ def ps_quote(value: str) -> str:
 
 
 class CmdAdapter(ShellAdapter):
+    def __init__(self, policy_token: str = "") -> None:
+        self.policy_token = policy_token
+
     def render(self, action: Action, cwd: Path) -> str:
         if needs_query(action):
-            return query_command(action)
+            return query_command(action, policy_token=self.policy_token)
         path = str((cwd / action.path).resolve()) if action.path else str(cwd)
         quoted = cmd_quote(path)
         if action.kind == "cd":
@@ -83,9 +113,12 @@ class CmdAdapter(ShellAdapter):
 
 
 class PowerShellAdapter(ShellAdapter):
+    def __init__(self, policy_token: str = "") -> None:
+        self.policy_token = policy_token
+
     def render(self, action: Action, cwd: Path) -> str:
         if needs_query(action):
-            return query_command(action, powershell=True)
+            return query_command(action, powershell=True, policy_token=self.policy_token)
         path = str((cwd / action.path).resolve()) if action.path else str(cwd)
         quoted = ps_quote(path)
         if action.kind == "cd":
@@ -104,7 +137,12 @@ class PowerShellAdapter(ShellAdapter):
         if action.kind == "read":
             return "Get-Content -LiteralPath " + quoted + " -Encoding UTF8 -ErrorAction Stop"
         if action.kind == "delete":
-            return "Remove-Item -LiteralPath " + quoted + (" -Recurse" if action.recursive else "") + " -ErrorAction Stop"
+            return (
+                "Remove-Item -LiteralPath "
+                + quoted
+                + (" -Recurse" if action.recursive else "")
+                + " -ErrorAction Stop"
+            )
         if action.kind == "env":
             return (
                 "[Environment]::SetEnvironmentVariable("

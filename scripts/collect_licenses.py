@@ -26,7 +26,12 @@ for distribution in importlib.metadata.distributions():
         ):
             source = Path(distribution.locate_file(file))
             if source.is_file() and source.suffix not in (".py", ".pyc"):
-                destination = target / name / file.name
+                # Wheel bundles can contain several different LICENSE.txt files.
+                # Preserve their paths so none overwrites the main/bundled notice.
+                package_target = (target / name).resolve()
+                destination = (package_target / Path(*file.parts)).resolve()
+                if not destination.is_relative_to(package_target):
+                    continue
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
 python_license = Path(sys.base_prefix) / "LICENSE.txt"
