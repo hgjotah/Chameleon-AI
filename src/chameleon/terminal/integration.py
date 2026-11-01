@@ -28,7 +28,7 @@ if (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue) {{
 }}
 $global:ChameleonStatePath = {ps_quote(str(state_file))}
 function global:prompt {{
-    $state = @{{ cwd = (Get-Location).Path; aliases = @((Get-Alias).Name) + @((Get-Command -CommandType Function,Cmdlet).Name); shell_version = $PSVersionTable.PSVersion.ToString() }}
+    $state = @{{ cwd = (Get-Location).Path; aliases = @((Get-Alias).Name) + @((Get-Command -ListImported -CommandType Function,Cmdlet).Name); shell_version = $PSVersionTable.PSVersion.ToString() }}
     [IO.File]::WriteAllText($global:ChameleonStatePath, ($state | ConvertTo-Json -Compress), (New-Object Text.UTF8Encoding($false)))
     'PS ' + (Get-Location).Path + '> ' + [char]27 + ']0;Chameleon-{token};' + (Get-Location).Path + [char]7
 }}

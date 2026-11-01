@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1 · 2026-11-01
+
+- Fundamentación en el sistema real: versión/edición/lenguaje del shell, ruta del ejecutable, arquitectura, idioma, carpetas conocidas redirigidas y variables permitidas; contexto seleccionado según la petición.
+- PowerShell 7 se identifica correctamente también desde el wrapper. Los alias/funciones relevantes y el modo de lenguaje del shell llamante se transmiten sin enviar sus cuerpos.
+- Consulta de ayuda nativa de Windows y metadatos/AST de PowerShell para revisar operación, parámetros, sintaxis y valores de propiedades antes de proponer la ejecución. La propuesta nunca se ejecuta durante esta inspección.
+- Eliminados los pares de órdenes/respuestas del prompt. El modelo elige el comando; la aplicación aporta observaciones y errores nativos para corregirlo.
+- Validación de operandos, comillas, contenido literal y tipo de operación en las tareas simples verificadas; rechazo de nombres inventados, rutas devueltas como texto y palabras de la petición usadas como argumentos.
+- Lecturas de propiedades de sesión y cambios de apariencia limitados a sus permisos correspondientes, sin exigir acceso arbitrario a scripts.
+- Los nombres ambiguos y destinos existentes se resuelven antes de llamar al modelo. La creación de contexto nativo ocurre fuera del hilo de interfaz.
+- Normalización de un único delimitador de código; se siguen rechazando prosa y múltiples líneas.
+
 ## 0.5.0 · 2026-10-31
 
 - Cinco perfiles de acceso: Solo lectura, Equilibrado, Desarrollador, Personalizado y Acceso total sin bloqueos/confirmaciones de aplicación.

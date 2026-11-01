@@ -1,6 +1,6 @@
 # Installation, repair and removal
 
-## Modelo y acceso en 0.5.0
+## Modelo y acceso en 0.5.1
 
 Setup permite elegir qwen3:4b-instruct (~2,5 GB) o qwen2.5:0.5b (~398 MB).
 Reutiliza el modelo elegido si está presente; si no, lo descarga al preparar IA.

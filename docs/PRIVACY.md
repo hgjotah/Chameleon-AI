@@ -1,5 +1,12 @@
 # Privacy
 
+0.5.1 adds bounded shell/OS metadata and request-relevant native help to command
+translation. Environment values use an explicit allowlist; credentials, full PATH,
+function bodies and a blanket environment dump are excluded. Recent output/history
+is supplied for follow-up/error requests, with redaction. Native discovery parses
+the proposed command as data; it does not execute it. Shell metadata can expose
+the names of relevant caller aliases/functions and local tool availability.
+
 In 0.5.0 command-only mode (the default), the model receives the request, shell,
 cwd, bounded filename/context metadata, permission flags and verified source paths.
 It generates a command; file contents are not sent to it for command translation.

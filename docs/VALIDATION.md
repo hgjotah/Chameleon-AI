@@ -1,6 +1,61 @@
-# Delivery validation · 0.5.0 · 2026-10-31
+# Delivery validation · 0.5.1 · 2026-11-01
 
-## Current release · 0.5.0
+## Current release · 0.5.1
+
+Ruff passed and mypy checked 56 source files. The final non-model suite passed
+**219 tests**, with one documented CMD delayed-expansion skip. New checks cover
+native AST parsing/static binding, unknown parameters and pipeline commands,
+read-only inspection without executing a proposed write, literal session reads,
+console permissions, caller metadata boundaries, ambiguous names, preserved
+source/destination operands, CMD arity, code delimiters and native cmdlet routing.
+
+The command prompt contains no task/answer examples. Native references and live
+session property types are discovered from the actual OS. The model still chooses
+the command. Corrections and independent policy checks occur before execution.
+Two intermediate 32-case forced-model matrices exposed wrong cmdlets, incorrect
+arguments, lost quotes and semantic failures; these were exploratory, NOT a claim
+that every model translation passed. Their findings drove the independent checks.
+
+Final real ConPTY runs verified the requested green text effect in all four
+model/shell combinations under the Full profile: qwen2.5:0.5b and
+qwen3:4b-instruct, CMD and Windows PowerShell. The command was chosen by the model,
+not supplied as a task/answer example. QA whitelisted the proposed effect before
+executing it and observed ANSI color output or actual ForegroundColor afterwards.
+Final evidence: `artifacts/console-precision051-tiny.json` and
+`artifacts/console-precision051-large.json`. Earlier Balanced/Full exploratory
+runs are retained separately; they are not substituted for the final runs.
+
+Small-model discovery uses the actual parameter count from local model metadata.
+It starts with a compact context and expands runtime facts during native review.
+Native help-derived value validation also covers inline CMD argument separators;
+invalid documented values cannot bypass review by appearing as a single word.
+Truncated responses are rejected and can receive a bounded corrective retry.
+
+All 54 bundled Chameleon modules match the final source, with exact interface,
+shell assets, embedded payload and logo verification. Ten frozen executable checks
+pass, including CMD/PS parent state, Qt/xterm/ConPTY, Setup/Settings, missing AI,
+DPI 1.25/1.5 and removal preserving the original profile. The standalone release
+was built with clean PyInstaller caches; stale incremental builds were rejected.
+
+The real account is updated to 0.5.1. Installed native wrappers created, read,
+copied and deleted a hidden-extension file in CMD, PowerShell 5.1 and PowerShell 7;
+literal Unicode content containing an ampersand was preserved. Doctor passed all
+12 checks. A final installed frozen-Core forced-model dry-run returned COLOR 2
+from actual qwen2.5:0.5b inference (2 calls, 10 tokens, 14.4 s on this run).
+Configuration (including the selected model/profile), user PATH and PowerShell
+profile bytes are unchanged. The installed Core SHA256 equals the release Core.
+Evidence: `artifacts/installed-native051.log`, `doctor051.log`,
+`installed-qwen051.log`, `actual_account_after051.json`, `build051-release.log`.
+
+These checks do not establish universal semantic correctness. The 0.5B model still
+misunderstands some tasks; a valid command name/AST alone cannot prove intent.
+The Full profile retains arbitrary access with the Windows user's privileges.
+Simple local operations remain available without inference. Extra reference
+review adds latency on this CPU; validated simple tasks avoid a redundant round.
+Source/portable ZIP CRC and SHA256 verification also pass for the final delivery.
+
+
+## Previous release · 0.5.0
 
 Ruff passed and mypy passed 54 source files. The complete non-model suite passed:
 **198 passed, 1 skipped, 4 deselected**. This includes profile

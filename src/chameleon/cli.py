@@ -141,6 +141,14 @@ async def run(args: argparse.Namespace) -> int:
     store = SessionStore(root, args.session)
     cwd = Path(args.cwd or os.getcwd()).resolve()
     ctx = build_context(cwd, shell, store.recent())
+    if args.shell_version:
+        ctx.shell_version = args.shell_version
+    if args.shell_executable:
+        ctx.shell_executable = args.shell_executable
+    if args.shell_state:
+        from chameleon.core.context import apply_shell_state
+
+        apply_shell_state(ctx, args.shell_state)
     engine = Engine(config, progress=human if args.debug or not config.ai.command_only else None)
     if args.model:
         config.ai.prefer_model = True
@@ -242,6 +250,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--encoded")
     parser.add_argument("--policy")
     parser.add_argument("--shell", choices=("cmd", "powershell", "pwsh"))
+    parser.add_argument("--shell-version")
+    parser.add_argument("--shell-executable")
+    parser.add_argument("--shell-state")
     parser.add_argument("--session", type=int)
     parser.add_argument("--cwd")
     parser.add_argument("--show", action="store_true")

@@ -20,11 +20,13 @@ chameleon doctor
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
-En **0.5.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. Se pide confirmación antes de cualquier cambio. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+En **0.5.1**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. El perfil Equilibrado pide confirmación antes de los cambios; Acceso total sigue tu configuración sin confirmaciones. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
 
 Setup muestra por separado Ollama instalado, servicio activo y Qwen descargado. Deja marcada **Preparar IA** para comprobar los tres pasos; si falta Ollama solicitará consentimiento antes de descargar su instalador oficial. Espera al resultado de la inferencia real. El terminal puede instalarse aunque la descarga falle, pero Setup indicará **IA pendiente** y permitirá reparar.
 
 Qwen envía progreso mientras genera la respuesta; sólo una respuesta completa y validada puede proponer acciones. En equipos con CPU, **Automático · rápido** evita el modelo para operaciones concretas. `--model` permite verificar una llamada real a Qwen. Los hilos de CPU se ajustan en Ajustes → IA (4 por defecto); la velocidad también depende de RAM y carga del equipo.
+
+La versión **0.5.1** consulta la ayuda y los metadatos del Windows/shell instalado para revisar las propuestas de Qwen. No añade respuestas memorizadas a frases de prueba. Distingue CMD, Windows PowerShell 5.1 y PowerShell 7; conserva los operandos observados y corrige parámetros o rutas inválidos antes de ejecutar. La comprobación puede añadir una ronda de inferencia. El modelo de 0,5B sigue teniendo límites de comprensión: validar sintaxis no demuestra por sí solo que una orden cumpla cualquier petición. Las acciones locales concretas siguen evitando la inferencia.
 
 ## Instalar y ejecutar
 
@@ -46,7 +48,7 @@ Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; C
 
 El panel lateral muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
 
-En 0.5.0 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay un reintento si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
+En 0.5.1 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay correcciones acotadas si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
 
 Elige **qwen3:4b-instruct** (~2,5 GB) o **qwen2.5:0.5b** (~398 MB) en Setup, Ajustes o el panel del terminal. En Ajustes puedes introducir otra etiqueta local y pulsar **Descargar si falta y probar modelo**. El modelo pequeño consume menos recursos y puede cometer más errores; la selección no cambia silenciosamente a otro modelo.
 
@@ -76,8 +78,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.5.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.5.0-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.5.1-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.5.1-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

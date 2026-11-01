@@ -28,7 +28,25 @@ class Engine:
 
     async def plan(self, request: str, context: Context) -> tuple[Plan, Assessment]:
         local = local_plan(request, context)
-        plan = None if self.config.ai.prefer_model else local
+        if local and local.intent == "execute" and len(local.actions) == 1:
+            action = local.actions[0]
+            if action.kind in ("create", "mkdir", "copy", "move"):
+                target = Path(action.destination or action.path)
+                if target.exists():
+                    local = Plan(
+                        intent="error",
+                        shell=context.shell,
+                        summary="El destino ya existe y la petición no solicita sobrescribirlo. Usa otro nombre o pide expresamente la sustitución.",
+                    )
+        # Missing/ambiguous literal paths are observations, not an invitation for
+        # a forced model to guess a different file.
+        plan = (
+            local
+            if local and local.intent in ("clarify", "error")
+            else None
+            if self.config.ai.prefer_model
+            else local
+        )
         if plan is None:
             if not self.config.ai.enabled:
                 raise ProviderError(
@@ -39,6 +57,9 @@ class Engine:
             context.permissions = self.config.safety.permissions()
             if not context.permissions["read"]:
                 context.entries = []
+                context.evidence = []
+                context.observed_output = ""
+                context.recent = []
             if (
                 local
                 and local.intent == "execute"
@@ -49,11 +70,12 @@ class Engine:
                 context.action_kind_hint = local.actions[0].kind
             if local and local.intent == "execute":
                 for action in local.actions:
-                    if action.path and Path(action.path).exists():
+                    if context.permissions["read"] and action.path and Path(action.path).exists():
                         target = Path(action.path)
                         context.evidence.append(
                             {
                                 "kind": "stat",
+                                "role": "source",
                                 "path": str(target),
                                 "exists": True,
                                 "is_file": target.is_file(),
@@ -61,6 +83,14 @@ class Engine:
                             }
                         )
                         trace.inspections += 1
+            if self.config.ai.command_only:
+                if local and local.intent == "execute" and len(local.actions) == 1:
+                    action = local.actions[0]
+                    context.requested_action = {
+                        key: str(value)
+                        for key, value in action.model_dump().items()
+                        if key in ("kind", "path", "destination", "content") and value
+                    }
             context.needs_verified_observation = bool(
                 re.search(
                     r"(?:qu[eé] (?:contiene|hay|dice)|cu[aá]ntos?|existe|contenido|contents?|how many|does .+ exist|summari[sz]e|resume|explica|explain).*(?:archivos?|files?|carpeta|folder|\.\w{1,5}\b)|(?:qu[eé] (?:contiene|dice)|contents? of)\b",

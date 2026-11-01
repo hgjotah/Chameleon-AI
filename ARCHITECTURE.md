@@ -1,5 +1,37 @@
 # Architecture and implementation decisions
 
+## 0.5.1 native grounding
+
+`Context` retains OS/architecture/locale, actual shell version/edition/executable,
+language mode, administrator status, Known Folders, bounded directory evidence,
+allowlisted environment values and caller functions/aliases. Command translation
+selects relevant facts instead of dumping the environment or unrelated history.
+PowerShell wrappers identify Core/5.1 correctly and transmit relevant function
+names without bodies. GUI discovery runs in the request worker, off the event loop.
+
+There are no task/answer examples in the command prompt. After selection, Windows
+`help` or PowerShell command metadata provides native syntax. PowerShell's parser
+and static parameter binder inspect proposals as data, without invoking them.
+Known session object properties/enums come from reflection. Verified simple file
+tasks additionally check operation family, literal operands, quotes and CMD arity.
+Missing/ambiguous sources and creation conflicts remain application observations.
+
+Incorrect candidates receive bounded corrective feedback (three command attempts
+within the existing deadline). Valid, grounded simple tasks avoid an unnecessary
+second inference; ungrounded choices can receive a native-reference review.
+The model's actual parameter count selects the initial context budget: models
+below one billion parameters start with a compact prompt, then receive full
+runtime facts during reference review. Model selection is preserved; no silent
+substitution with a larger model occurs. A truncated reply can be corrected, and
+simple value constraints explicitly declared by native help are checked as data.
+One whole-response code delimiter is normalized; prose/multiple lines fail.
+Permissions and execution policy remain independent of model output. This is not
+a proof of arbitrary shell equivalence or a replacement for model capacity.
+
+API references: [PowerShell parsing](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_parsing),
+[static binding](https://learn.microsoft.com/en-us/dotnet/api/system.management.automation.language.staticparameterbinder.bindcommand),
+[Ollama chat](https://docs.ollama.com/api/chat).
+
 ## 0.5.0 generation and UI
 
 The default Ollama path generates one plain shell command, not a JSON envelope.

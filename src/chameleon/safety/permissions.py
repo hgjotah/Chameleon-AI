@@ -59,10 +59,50 @@ READ_COMMANDS = {
 }
 
 
+def session_change(command: str) -> bool:
+    """Narrow, literal console-only changes; no filesystem/system elevation."""
+    if re.fullmatch(r"\s*color(?:\s+[0-9a-fA-F]{1,2})?\s*", command, re.I):
+        return True
+    if re.fullmatch(r"\s*title\s+[^\r\n&|<>^%!]+", command, re.I):
+        return True
+    if re.fullmatch(
+        r"\s*\$Host\.UI\.RawUI\.(?:ForegroundColor|BackgroundColor)\s*=\s*\[(?:System\.)?ConsoleColor\]::[A-Za-z]+\s*",
+        command,
+        re.I,
+    ):
+        return True
+    return bool(
+        re.fullmatch(
+            r"\s*\$Host\.UI\.RawUI\.(?:ForegroundColor|BackgroundColor|WindowTitle)\s*=\s*(?:'[^'\r\n]*'|\"[^\"$`\r\n]*\")\s*",
+            command,
+            re.I,
+        )
+    )
+
+
+def session_read(command: str) -> bool:
+    # Bare variables/properties print data; their values are not evaluated as code.
+    return bool(
+        re.fullmatch(
+            r"\s*(?:\$env:[A-Za-z_][A-Za-z0-9_]*|\$(?:PWD(?:\.Path)?|PSVersionTable(?:\.[A-Za-z]+)?|Host(?:\.[A-Za-z]+){0,3}))\s*",
+            command,
+            re.I,
+        )
+    )
+
+
 def denied(action: Action, policy: SafetyConfig) -> str | None:
     if policy.mode == "full":
         return None
     caps = policy.permissions()
+    if action.kind == "command" and session_read(action.command):
+        return None if caps["read"] else "Permisos desactivados: read. Ajustes → Acceso del modelo."
+    if action.kind == "command" and session_change(action.command):
+        return (
+            None
+            if caps["commands"]
+            else "Permisos desactivados: commands. Ajustes → Acceso del modelo."
+        )
     needed = {"read"}
     if action.kind in ("create", "mkdir", "copy", "move", "env"):
         needed = {"write"}

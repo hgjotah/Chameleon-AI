@@ -20,7 +20,9 @@ def provider(outputs: list[str]) -> OllamaProvider:
             return httpx.Response(200, json={"model_info": {"general.architecture": "qwen2"}})
         body = json.loads(request.content)
         assert "format" not in body and body["stream"]
-        assert "Output ONLY the command" in body["messages"][0]["content"]
+        assert (
+            "ONLY" in body["messages"][0]["content"] and "command" in body["messages"][0]["content"]
+        )
         attempts.append(True)
         return httpx.Response(
             200,
@@ -39,6 +41,43 @@ def test_only_command_is_returned() -> None:
     plan = asyncio.run(provider(["dir"]).plan("lista archivos", Context(cwd="C:/")))
     assert plan.summary == "dir" and plan.actions[0].command == "dir"
     assert plan.trace.calls == 1 and plan.trace.model == "qwen2.5:0.5b"
+
+
+def test_native_translation_receives_runtime_facts_and_plural_file_context(tmp_path) -> None:
+    downloads = tmp_path / "redirected downloads"
+    downloads.mkdir()
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"model_info": {"general.architecture": "qwen2"}})
+        body = json.loads(request.content)
+        text = body["messages"][1]["content"]
+        for fact in (
+            "CustomBuild",
+            "9.9",
+            "Elevated administrator: True",
+            str(downloads),
+            "scripts",
+            "read",
+        ):
+            assert fact in text
+        assert "DO_NOT_SEND_THIS_SECRET" not in text
+        return httpx.Response(200, json={"message": {"content": "dir"}})
+
+    ctx = Context(
+        cwd=str(tmp_path),
+        os="Windows-11-CustomBuild",
+        shell_version="9.9",
+        admin=True,
+        known_directories={"Downloads": str(downloads)},
+        permissions={"read": True, "scripts": False},
+    )
+    plan = asyncio.run(
+        OllamaProvider(AIConfig(), httpx.MockTransport(handle)).plan(
+            "lista archivos en Downloads", ctx
+        )
+    )
+    assert plan.actions[0].command == "dir"
 
 
 def test_literal_cmd_environment_assignment_uses_parent_export() -> None:
@@ -74,7 +113,6 @@ def test_existing_script_is_not_replaced_with_generated_example(tmp_path) -> Non
     "bad",
     [
         "Hola, aquí tienes el comando: dir",
-        "```cmd\ndir\n```",
         "dir\ngracias",
         '{"command":"dir"}',
         "<think>...</think>dir",
@@ -88,6 +126,19 @@ def test_prose_or_wrappers_are_never_executed(bad: str) -> None:
 def test_format_retry_can_recover_without_executing_bad_text() -> None:
     plan = asyncio.run(provider(["Hola, usa dir", "dir"]).plan("lista", Context(cwd="C:/")))
     assert plan.actions[0].command == "dir" and plan.trace.calls == 2
+
+
+@pytest.mark.parametrize("wrapped", ["`dir`", "```cmd\ndir\n```"])
+def test_single_command_delimiter_is_normalized(wrapped: str) -> None:
+    plan = asyncio.run(provider([wrapped]).plan("lista", Context(cwd="C:/")))
+    assert plan.actions[0].command == "dir"
+
+
+def test_multiline_fence_does_not_smuggle_extra_commands() -> None:
+    with pytest.raises(ProviderError):
+        asyncio.run(
+            provider(["```cmd\ndir\ndel important.txt\n```"]).plan("lista", Context(cwd="C:/"))
+        )
 
 
 def test_command_permissions_are_assessed_outside_model(tmp_path) -> None:

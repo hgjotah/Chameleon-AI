@@ -126,6 +126,18 @@ class RiskEngine:
         reason = denied(Action(kind="command", command=command), self.policy)
         if reason:
             return Assessment(Risk.BLOCKED, reason)
+        from chameleon.safety.permissions import session_change, session_read
+
+        if session_change(command):
+            return Assessment(
+                Risk.CONFIRM if self.strict else Risk.SAFE,
+                "Cambiará sólo la apariencia de esta sesión.",
+            )
+        if session_read(command):
+            return Assessment(
+                Risk.CONFIRM if self.strict else Risk.SAFE,
+                "Consulta de una propiedad de la sesión.",
+            )
         if (
             self.policy.mode in ("full", "developer")
             or self.policy.mode == "custom"

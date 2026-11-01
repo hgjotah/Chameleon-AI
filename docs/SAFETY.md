@@ -1,5 +1,13 @@
 # Safety
 
+In 0.5.1, simple literal session-property reads use the read permission. Narrow
+console appearance changes use the commands permission; neither grants arbitrary
+scripts, filesystem writes or system administration. Native parsing/parameter and
+enum checks reject malformed proposals before execution. Full still uses the
+selected user's Windows privileges; source/destination/meaning checks are quality
+checks, not an OS sandbox. A syntactically valid command can still misunderstand
+an unrestricted request, especially with the 0.5B model.
+
 ## Access profiles in 0.5.0
 
 These controls apply to generated actions, not manually typed commands. `RiskEngine`

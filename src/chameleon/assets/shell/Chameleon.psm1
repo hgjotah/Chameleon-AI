@@ -5,7 +5,18 @@ function global:chameleon {
     $oldEncoding = [Console]::OutputEncoding
     try {
         [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-        $json = & $core --emit powershell --session $PID --cwd (Get-Location).Path @Request
+        $targetShell = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }
+        $targetExecutable = Join-Path $PSHOME ($targetShell + '.exe')
+        $requestText = $Request -join ' '
+        $sessionState = @{
+            edition = $PSVersionTable.PSEdition
+            language_mode = $ExecutionContext.SessionState.LanguageMode.ToString()
+            commands = @(Get-Command -ListImported -CommandType Alias,Function | Where-Object {
+                $requestText -match ('(?<![A-Za-z0-9_])' + [regex]::Escape($_.Name) + '(?![A-Za-z0-9_])')
+            } | Select-Object -First 24 -ExpandProperty Name)
+        }
+        $sessionEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($sessionState | ConvertTo-Json -Compress)))
+        $json = & $core --emit powershell --shell $targetShell --shell-version $PSVersionTable.PSVersion.ToString() --shell-executable $targetExecutable --shell-state $sessionEncoded --session $PID --cwd (Get-Location).Path @Request
         if ($LASTEXITCODE -ne 0 -or -not $json) { return }
         $plan = ($json -join "`n") | ConvertFrom-Json
         if ($plan.version -ne 1 -or $plan.intent -ne 'execute') { throw 'Invalid Chameleon protocol' }

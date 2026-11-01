@@ -25,7 +25,7 @@ async def diagnose(root: Path, config: Config) -> list[Check]:
             os.name == "nt" and sys.getwindowsversion().build >= 17763,
             "Windows 10 1809+",
         ),
-        Check("Core", True, "0.5.0"),
+        Check("Core", True, "0.5.1"),
         Check(
             "CMD integration",
             (root / "bin" / "chameleon.cmd").is_file(),

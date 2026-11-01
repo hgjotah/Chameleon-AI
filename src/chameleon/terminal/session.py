@@ -176,21 +176,26 @@ class TerminalSession(QObject):
             self.at_prompt = False
             self.backend.write("\r")
             return
-        context = build_context(self.cwd, self.config.terminal.shell, self.recent)
         self.busy = True
         self.cancel_requested.clear()
         self.last_request = line
         self.at_prompt = False
         self.status.emit("PROCESSING")
-        context.shell_version = self.shell_version
-        context.executables.update({name: "shell function/alias" for name in self.aliases})
-        context.observed_output = redact(self.tail)[-2000:]
         request_config = self.config.model_copy(deep=True)
+        request_cwd, recent = self.cwd, list(self.recent)
+        version, aliases, output = self.shell_version, set(self.aliases), redact(self.tail)[-2000:]
 
         def worker() -> None:
             loop = asyncio.new_event_loop()
             self._loop = loop
             try:
+                # Shell discovery can start a bounded read-only child process;
+                # keep it off the GUI event thread and snapshot session state.
+                context = build_context(request_cwd, request_config.terminal.shell, recent)
+                if version != "unknown":
+                    context.shell_version = version
+                context.executables.update({name: "shell function/alias" for name in aliases})
+                context.observed_output = output
                 self._task = loop.create_task(
                     Engine(request_config, progress=self.status.emit).plan(line, context)
                 )

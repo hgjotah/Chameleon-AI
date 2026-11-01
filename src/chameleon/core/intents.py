@@ -165,6 +165,14 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
     )
     text = normalize(request)
 
+    # A single-action grammar must never absorb an additional instruction as a
+    # filename/content. Quoted conjunctions remain literal data.
+    if split_phrase(
+        request,
+        r"\s+(?:y luego|y despues|y despu[eé]s|despu[eé]s|and then|then|y (?:borra|elimina|crea|mueve|copia|lista|ejecuta)|and (?:delete|remove|create|move|copy|list|run))\s+",
+    ):
+        return None
+
     def execute(action: Action, summary: str) -> Plan:
         return Plan(intent="execute", shell=ctx.shell, actions=[action], summary=summary)
 
@@ -218,7 +226,14 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         re.I,
     )
     if reading:
-        target = resolve_path(reading.group(1), ctx)
+        target, matches = resolve_reference(reading.group(1), ctx)
+        if matches:
+            return Plan(
+                intent="clarify",
+                shell=ctx.shell,
+                summary="El nombre corresponde a varios archivos. Selecciona la ruta exacta.",
+                choices=[str(p) for p in matches[:20]],
+            )
         return execute(Action(kind="read", path=str(target)), f"Leer {target}")
     transfer = re.match(
         r"^(copia|copiar|mueve|mover|copy|move)\s+(?:(?:el archivo|the file)\s+)?(.+?)\s+(?:a|al|to)\s+(.+)$",
@@ -226,7 +241,14 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
         re.I,
     )
     if transfer:
-        source = resolve_path(transfer.group(2), ctx)
+        source, matches = resolve_reference(transfer.group(2), ctx)
+        if matches:
+            return Plan(
+                intent="clarify",
+                shell=ctx.shell,
+                summary="Hay varios archivos de origen. Selecciona la ruta exacta.",
+                choices=[str(p) for p in matches[:20]],
+            )
         target = resolve_path(transfer.group(3), ctx)
         if target.is_dir():
             target /= source.name
@@ -311,6 +333,24 @@ def local_plan(request: str, ctx: Context) -> Plan | None:
                 choices=candidates[:20],
             )
         target_path, matches = resolve_reference(value, ctx)
+        if (
+            not target_path.exists()
+            and not matches
+            and (
+                re.search(r"[*?]", value)
+                or re.match(
+                    r"^(?:todos?|todas?|all|every|each|los archivos|las carpetas)\b",
+                    normalize(value),
+                )
+                or re.search(
+                    r"\b(?:excepto|anteriores|posteriores|modificados|older|newer|except|modified)\b",
+                    normalize(value),
+                )
+            )
+        ):
+            # A glob/filter is a task for the model, not a nonexistent literal
+            # filename that the single-file grammar can authoritatively reject.
+            return None
         if matches:
             return Plan(
                 intent="clarify",
@@ -340,6 +380,10 @@ def is_real_command(text: str, ctx: Context, aliases: set[str] | None = None) ->
     if not match:
         return True
     first = next(part for part in match.groups() if part is not None)
+    if ctx.shell != "cmd" and re.fullmatch(r"[A-Za-z]+-[A-Za-z][A-Za-z0-9]*", first):
+        # User-typed cmdlets (including not-yet-imported modules) stay native.
+        # Generated commands have a separate AST/existence validation path.
+        return True
     builtins = CMD_BUILTINS if ctx.shell == "cmd" else PS_BUILTINS
     if first.casefold() in builtins | (aliases or set()):
         return True
