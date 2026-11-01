@@ -82,20 +82,3 @@ dist/SHA256SUMS.json                    Checksums
 ```
 
 Desde fuente, después de preparar `.venv`: `scripts/run.ps1 terminal`, `scripts/run.ps1 setup`, `scripts/run.ps1 settings`. `python -m chameleon ai --dry-run ...` permite revisar planes; solo el wrapper/módulo puede modificar el shell padre.
-
-## Mantener y publicar
-
-GitHub Actions ejecuta lint, tipos, tests reales de shells y un build Windows sin secrets obligatorios. Los tests de Ollama requieren `CHAMELEON_TEST_OLLAMA=1`. Consulta [BUILDING](docs/BUILDING.md), [arquitectura](ARCHITECTURE.md), [instalación](docs/INSTALLATION.md), [integración](docs/SHELL_INTEGRATION.md), [seguridad](docs/SAFETY.md), [privacidad](docs/PRIVACY.md), [matriz de terminal](docs/TERMINAL_TEST_MATRIX.md), [validación de esta entrega](docs/VALIDATION.md) y [correspondencia con los 55 requisitos](docs/REQUIREMENTS.md).
-
-Para subir este repositorio, crea un repositorio vacío en tu cuenta y ejecuta desde esta carpeta:
-
-```powershell
-git remote add origin https://github.com/TU_USUARIO/chameleon-ai.git
-git push -u origin main
-```
-
-Si empiezas desde el ZIP de fuentes, prepara primero el repositorio con `git init -b main`, `git add .` y `git commit -m "Initial release"`. La carpeta de esta entrega ya contiene su repositorio Git local.
-
-Publica los binarios de `dist` como assets de una GitHub Release; el runtime completo supera el límite por archivo del repositorio Git y está excluido por `.gitignore`.
-
-El proyecto usa MIT; sus dependencias mantienen sus licencias. PySide6/Qt son LGPL/GPL/comerciales: se distribuyen bibliotecas compartidas, avisos y licencias. Los binarios de esta entrega no están firmados con un certificado comercial. Windows puede mostrar SmartScreen; la firma comercial puede añadirse al proceso de release.
