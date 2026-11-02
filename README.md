@@ -44,6 +44,34 @@ CMD por defecto; abre otra sesión con el selector de shell o **+**. Los program
 
 Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; Ctrl+Shift+C/V copia/pega; Ctrl+`+`/`-` cambia fuente; F11 pantalla completa. Las flechas, Tab e historial los gestiona el shell real. El pegado multilínea siempre se envía como entrada directa.
 
+## Comandos de `chameleon ai` (desde 0.7.0)
+
+En CMD, PowerShell o Chameleon Terminal puedes usar:
+
+| Comando | Resultado |
+|---|---|
+| `chameleon ai --version` | Muestra la versión de Chameleon que estás ejecutando. |
+| `chameleon ai --model` | Muestra el modelo configurado y si la IA está activada, sin llamar al modelo. |
+| `chameleon ai --models` | Lista las etiquetas de los modelos descargados en Ollama local y marca el actual. |
+| `chameleon ai --changemodel` | Abre el selector de modelos locales descargados. Usa ↑/↓ y Enter para elegir; Esc o Ctrl+C cancelan. |
+| `chameleon ai --changemodel qwen2.5:0.5b` | Guarda directamente esa etiqueta, si está descargada y se verifica como local. |
+| `chameleon ai --help` | Muestra todos los comandos y opciones de uso. |
+| `chameleon ai --try <petición>` | Enseña el comando concreto para tu shell y ofrece **Cancelar** o **Ejecutar** en la sesión actual. |
+| `chameleon ai --dry-run <petición>` | Muestra la propuesta sin ejecutarla ni abrir una confirmación de ejecución. |
+| `chameleon ai --show <petición>` | Muestra el comando generado y continúa con el comportamiento habitual de permisos y ejecución. |
+| `chameleon ai --force-model <petición>` | Fuerza una consulta al modelo, incluso para peticiones que normalmente resolverían las reglas locales. |
+| `chameleon ai --debug <petición>` | Muestra el origen y diagnóstico de la propuesta; conserva el comportamiento habitual de ejecución. |
+
+```powershell
+chameleon ai --try ve a Desktop
+chameleon ai --force-model --try lista los archivos
+chameleon ai --changemodel
+```
+
+`--try` muestra la carpeta, el shell, el origen real de la propuesta y el comando que se va a ejecutar. La selección inicial es **Cancelar**: Enter por sí solo no ejecuta. Para aceptar, muévete a **Ejecutar** y pulsa Enter. Esta confirmación se mantiene incluso con **Acceso total**, y una acción bloqueada por tus permisos no puede aprobarse desde aquí. Sin consola interactiva, la propuesta se muestra pero no se ejecuta. La ruta usa las reglas locales o el modelo según tu configuración; combina `--force-model --try` para exigir inferencia real. No combines `--try` con `--dry-run`.
+
+El cambio de modelo se guarda para las siguientes llamadas a `chameleon ai` y las nuevas ventanas de Chameleon Terminal. La lista se consulta en Ollama local; si no responde, se informa del problema sin cambiar la configuración. Los modelos que falten se preparan desde Setup o Ajustes → IA local; el selector no instala ni descarga software. Por compatibilidad, `--model` **seguido de una petición** conserva su función anterior de forzar el modelo; usado solo muestra la selección actual.
+
 ## IA, privacidad y seguridad
 
 Abre **IA y permisos** para ver los controles de la sesión. El panel muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.

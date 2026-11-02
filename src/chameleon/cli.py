@@ -42,13 +42,53 @@ def ask(message: str) -> str:
     return ""
 
 
+HELP = """Uso: chameleon ai [opciones] <petición>
+
+Consultar y configurar
+  --version                 Muestra la versión instalada
+  --model                   Muestra el modelo configurado (sin hacer inferencia)
+  --models                  Lista los modelos descargados en Ollama local
+  --changemodel             Elige modelo con ↑/↓ y Enter; Esc cancela
+  --changemodel ETIQUETA     Selecciona un modelo local descargado sin abrir la lista
+  --help, -h                Muestra esta ayuda
+
+Preparar una acción
+  --try <petición>           Muestra el comando y permite Ejecutar o Cancelar
+  --dry-run <petición>       Muestra la propuesta sin ofrecer ejecutarla
+  --show <petición>          Muestra el comando además del comportamiento habitual
+  --force-model <petición>   Fuerza una consulta real al modelo configurado
+  --debug <petición>         Muestra origen, modelo y diagnóstico de la propuesta
+
+Ejemplos
+  chameleon ai --model
+  chameleon ai --changemodel
+  chameleon ai --try ve a Desktop
+  chameleon ai --force-model --try lista los archivos
+
+--try empieza en Cancelar y pide autorización incluso en Acceso total.
+Las políticas de acceso siguen aplicándose. Sin consola interactiva no ejecuta.
+Por compatibilidad, --model seguido de una petición equivale a --force-model.
+
+Otras herramientas
+  chameleon doctor          Diagnóstico de instalación, shells y Ollama
+  chameleon status          Alias de doctor
+  chameleon version         Versión
+  chameleon terminal        Abre Chameleon Terminal
+  chameleon settings        Abre Ajustes
+  chameleon setup           Abre el instalador / reparación
+"""
+
+
 async def run(args: argparse.Namespace) -> int:
+    operation = args.operation or "help"
+    if operation in ("help", "version"):
+        human(f"Chameleon AI {__version__}" + ("\n\n" + HELP if operation == "help" else ""))
+        return 0
     root = data_dir()
     config, warning = load_config(root)
     configure_logging(root, args.debug)
     if warning:
         human(warning)
-    operation = args.operation or "help"
     if operation == "apply":
         from chameleon.core.files import apply_file_action
         from chameleon.safety.engine import RiskEngine
@@ -86,16 +126,6 @@ async def run(args: argparse.Namespace) -> int:
         else:
             raise ValueError("Operación de consulta inválida")
         return 0
-    if operation in ("help", "version"):
-        human(
-            f"Chameleon AI {__version__}"
-            + (
-                "\nUso: chameleon ai [--show] [--dry-run] [--model] <petición>\n     chameleon status | doctor | version | terminal | settings | setup"
-                if operation == "help"
-                else ""
-            )
-        )
-        return 0
     if operation in ("terminal", "settings", "setup"):
         if operation == "setup" and args.install:
             from chameleon.platform.windows.installer import read_manifest
@@ -132,7 +162,26 @@ async def run(args: argparse.Namespace) -> int:
     if operation != "ai":
         human("Operación desconocida. Ejecuta chameleon --help.")
         return 2
+    if args.changemodel is not None:
+        from chameleon.cli_models import change_model
+
+        return await change_model(root, config, args.changemodel, human)
+    if args.models:
+        from chameleon.cli_models import installed_models
+
+        tags = await installed_models()
+        human("Modelos descargados en Ollama local:")
+        for tag in tags:
+            human(f"  {'›' if tag == config.ai.model else ' '} {tag}" + (" · actual" if tag == config.ai.model else ""))
+        if not tags:
+            human("  Ninguno. Prepáralos en Setup o Ajustes → IA local.")
+        return 0
     request = " ".join(args.request).strip()
+    if args.model and not request and not (args.try_command or args.dry_run or args.show or args.force_model):
+        human(f"Modelo configurado: {config.ai.model}")
+        human("Proveedor: Ollama local · 127.0.0.1:11434")
+        human("IA desactivada" if not config.ai.enabled else "IA activada")
+        return 0
     if not request:
         human("Escribe una petición después de chameleon ai.")
         return 2
@@ -149,9 +198,9 @@ async def run(args: argparse.Namespace) -> int:
         from chameleon.core.context import apply_shell_state
 
         apply_shell_state(ctx, args.shell_state)
-    engine = Engine(config, progress=human if args.debug or not config.ai.command_only else None)
-    if args.model:
+    if args.model or args.force_model:
         config.ai.prefer_model = True
+    engine = Engine(config, progress=human if args.debug or not config.ai.command_only else None)
     for _ in range(4):
         plan, assessment = await engine.plan(request, ctx)
         if plan.intent != "clarify":
@@ -181,9 +230,31 @@ async def run(args: argparse.Namespace) -> int:
         human("Bloqueado: " + assessment.reason)
         return 1
     commands = [adapter.render(action, cwd) for action in plan.actions]
-    if config.ai.command_only:
+    if args.try_command:
+        from chameleon.cli_ui import Choice, select
+
+        if not args.emit:
+            human("Comando propuesto:\n" + "\n".join(commands))
+            human("Para ofrecer ejecución en la sesión actual, usa chameleon ai --try desde el wrapper instalado.")
+            return 2
+        preview = (
+            f"VISTA PREVIA · {shell.upper()}\nCarpeta: {cwd}\nOrigen: {plan.trace.label()}"
+            + "\n\nComando que se ejecutará:\n\n"
+            + "\n".join(commands)
+            + ("\n\nRevisión de permisos: " + assessment.reason if assessment.level == Risk.CONFIRM else "")
+        )
+        chosen = select(
+            "CHAMELEON · ¿EJECUTAR ESTA PROPUESTA?",
+            [Choice("Cancelar", "No ejecutar nada"), Choice("Ejecutar", "En la sesión actual")],
+            selected=0,
+            details=preview,
+        )
+        if chosen != 1:
+            human("Cancelado. No se ejecutó la propuesta.")
+            return 1
+    elif config.ai.command_only:
         human("\n".join(commands))
-    if (
+    if not args.try_command and (
         args.show
         or args.dry_run
         or config.ai.show_generated_commands
@@ -199,7 +270,7 @@ async def run(args: argparse.Namespace) -> int:
             human("\nComando generado:\n" + "\n".join(commands))
     if args.dry_run:
         return 0
-    if assessment.level == Risk.CONFIRM:
+    if assessment.level == Risk.CONFIRM and not args.try_command:
         answer = ask(
             "Chameleon necesita confirmación\nRiesgo: " + assessment.reason + "\n¿Ejecutar? [y/N]"
         )
@@ -256,9 +327,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--session", type=int)
     parser.add_argument("--cwd")
     parser.add_argument("--show", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
+    execution = parser.add_mutually_exclusive_group()
+    execution.add_argument("--dry-run", action="store_true")
+    execution.add_argument("--try", dest="try_command", action="store_true")
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--model", action="store_true")
+    info = parser.add_mutually_exclusive_group()
+    info.add_argument("--version", action="store_true")
+    info.add_argument("--model", action="store_true")
+    info.add_argument("--models", action="store_true")
+    info.add_argument("--changemodel", nargs="?", const="")
+    parser.add_argument("--force-model", action="store_true")
     parser.add_argument("--install", action="store_true")
     parser.add_argument("--install-ollama", action="store_true")
     parser.add_argument("--download-model", action="store_true")
@@ -269,6 +347,15 @@ def main(argv: list[str] | None = None) -> int:
         args = parser.parse_intermixed_args(argv)
         if args.help:
             args.operation = "help"
+        elif args.version:
+            if args.request or args.try_command or args.dry_run or args.show or args.force_model or args.operation not in (None, "ai", "version"):
+                parser.error("--version no acepta una petición ni otra operación")
+            args.operation = "version"
+        elif args.changemodel is not None or args.models:
+            if args.operation != "ai" or args.request or args.try_command or args.dry_run or args.show or args.force_model:
+                parser.error("Usa chameleon ai --models o --changemodel [ETIQUETA], sin petición ni opciones de ejecución")
+        elif (args.model or args.try_command or args.force_model) and args.operation != "ai":
+            parser.error("Estas opciones se usan después de chameleon ai")
         return asyncio.run(run(args))
     except KeyboardInterrupt:
         human("Cancelado.")
