@@ -10,5 +10,5 @@ with Image.open(directory / "chameleon.png") as image:
 # Qt Essentials does not provide an SVG image plugin. Package the tiny native
 # checkbox glyph as PNG so it works in the standalone runtime as well.
 check = Image.new("RGBA", (80, 80))
-ImageDraw.Draw(check).line([(20, 40), (34, 54), (60, 26)], fill="#10362e", width=10, joint="curve")
+ImageDraw.Draw(check).line([(20, 40), (34, 54), (60, 26)], fill="#18311d", width=10, joint="curve")
 check.resize((20, 20), Image.Resampling.LANCZOS).save(directory / "check.png")

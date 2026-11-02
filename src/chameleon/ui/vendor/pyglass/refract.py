@@ -131,9 +131,9 @@ def _environment(rx, ry, rz):
     horizon = np.clip(1.0 - np.clip(rz, 0, 1), 0, 1)  # 1 at the rim, 0 at centre
 
     refl = np.empty(rx.shape + (3,), np.float32)
-    refl[..., 0] = horizon * 120 + spec_key * 255 + spec_fill * 150
-    refl[..., 1] = horizon * 140 + spec_key * 252 + spec_fill * 195
-    refl[..., 2] = horizon * 175 + spec_key * 245 + spec_fill * 255
+    refl[..., 0] = horizon * 126 + spec_key * 244 + spec_fill * 144
+    refl[..., 1] = horizon * 148 + spec_key * 253 + spec_fill * 188
+    refl[..., 2] = horizon * 122 + spec_key * 236 + spec_fill * 139
     return refl
 
 

@@ -14,7 +14,7 @@ def main() -> int:
     window.title("Chameleon AI")
     window.geometry("540x340")
     window.resizable(False, False)
-    window.configure(bg="#0b1017")
+    window.configure(bg="#0b110d")
     cancelled = False
     def cancel() -> None:
         nonlocal cancelled
@@ -26,24 +26,24 @@ def main() -> int:
     logo = tk.PhotoImage(file=str(resource / "chameleon.png"))
     window.iconphoto(True, logo)
     mark = logo.subsample(max(1, logo.width() // 88))
-    tk.Label(window, image=mark, bg="#0b1017").pack(pady=(22, 0))
+    tk.Label(window, image=mark, bg="#0b110d").pack(pady=(22, 0))
     tk.Label(
-        window, text="Chameleon", bg="#0b1017", fg="#81e3bc", font=("Segoe UI", 27, "bold")
+        window, text="Chameleon", bg="#0b110d", fg="#b5cf97", font=("Segoe UI", 24, "bold")
     ).pack(pady=(8, 12))
     label = tk.Label(
         window,
         text="Preparando el instalador local…",
-        bg="#0b1017",
-        fg="#dbe6f2",
+        bg="#0b110d",
+        fg="#e1eadb",
         font=("Segoe UI", 12),
     )
     label.pack()
     style = ttk.Style(window)
     style.theme_use("clam")
-    style.configure("Chameleon.Horizontal.TProgressbar", background="#81e3bc", troughcolor="#243143", borderwidth=0, lightcolor="#81e3bc", darkcolor="#81e3bc")
+    style.configure("Chameleon.Horizontal.TProgressbar", background="#b5cf97", troughcolor="#253b2c", borderwidth=0, lightcolor="#b5cf97", darkcolor="#b5cf97")
     progress = ttk.Progressbar(window, style="Chameleon.Horizontal.TProgressbar", length=430, maximum=100)
     progress.pack(pady=18)
-    tk.Label(window, text="LOCAL · PRIVADO · SIN CUENTA", bg="#0b1017", fg="#8b9eb5", font=("Segoe UI", 9)).pack()
+    tk.Label(window, text="LOCAL · PRIVADO · SIN CUENTA", bg="#0b110d", fg="#8ca28b", font=("Segoe UI", 9)).pack()
     window.update()
     code = 1
     try:

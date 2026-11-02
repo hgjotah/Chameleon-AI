@@ -90,7 +90,7 @@ function feed(data) {
 new QWebChannel(qt.webChannelTransport, channel => {
   bridge = channel.objects.bridge;
   if(!bridge) return;
-  term = new Terminal({allowProposedApi:false,convertEol:false,fontFamily:'Cascadia Mono, Consolas, monospace',fontSize:14,cursorBlink:true,scrollback:10000,theme:{background:'#0b1017',foreground:'#dbe6f2',cursor:'#81e3bc',selectionBackground:'#284b49',black:'#111b27',green:'#81e3bc',brightGreen:'#82ffb0',red:'#e87979',yellow:'#e6c275'}});
+  term = new Terminal({allowProposedApi:false,convertEol:false,fontFamily:'Cascadia Mono, Consolas, monospace',fontSize:14,cursorBlink:true,scrollback:10000,theme:{background:'#0b100d',foreground:'#dce6d8',cursor:'#bad797',selectionBackground:'#344c35',black:'#111b14',green:'#96c28b',brightGreen:'#bfdf9c',red:'#e87979',yellow:'#e6c275'}});
   fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   // Links are rendered, but navigation stays inside Qt's explicit browser opening policy.
@@ -134,6 +134,7 @@ new QWebChannel(qt.webChannelTransport, channel => {
     return true;
   });
   window.configureTerminal = config => { Object.assign(term.options,config); fit.fit(); };
+  window.focusTerminal = () => term.focus();
   window.terminalReady = true;
   bridge.ready();
   fit.fit(); term.focus();

@@ -20,13 +20,13 @@ chameleon doctor
 
 `cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
 
-En **0.5.1**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. El perfil Equilibrado pide confirmación antes de los cambios; Acceso total sigue tu configuración sin confirmaciones. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+En **0.6.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. El perfil Equilibrado pide confirmación antes de los cambios; Acceso total sigue tu configuración sin confirmaciones. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
 
 Setup muestra por separado Ollama instalado, servicio activo y Qwen descargado. Deja marcada **Preparar IA** para comprobar los tres pasos; si falta Ollama solicitará consentimiento antes de descargar su instalador oficial. Espera al resultado de la inferencia real. El terminal puede instalarse aunque la descarga falle, pero Setup indicará **IA pendiente** y permitirá reparar.
 
 Qwen envía progreso mientras genera la respuesta; sólo una respuesta completa y validada puede proponer acciones. En equipos con CPU, **Automático · rápido** evita el modelo para operaciones concretas. `--model` permite verificar una llamada real a Qwen. Los hilos de CPU se ajustan en Ajustes → IA (4 por defecto); la velocidad también depende de RAM y carga del equipo.
 
-La versión **0.5.1** consulta la ayuda y los metadatos del Windows/shell instalado para revisar las propuestas de Qwen. No añade respuestas memorizadas a frases de prueba. Distingue CMD, Windows PowerShell 5.1 y PowerShell 7; conserva los operandos observados y corrige parámetros o rutas inválidos antes de ejecutar. La comprobación puede añadir una ronda de inferencia. El modelo de 0,5B sigue teniendo límites de comprensión: validar sintaxis no demuestra por sí solo que una orden cumpla cualquier petición. Las acciones locales concretas siguen evitando la inferencia.
+La versión **0.6.0** consulta la ayuda y los metadatos del Windows/shell instalado para revisar las propuestas de Qwen. No añade respuestas memorizadas a frases de prueba. Distingue CMD, Windows PowerShell 5.1 y PowerShell 7; conserva los operandos observados y corrige parámetros o rutas inválidos antes de ejecutar. La comprobación puede añadir una ronda de inferencia. El modelo de 0,5B sigue teniendo límites de comprensión: validar sintaxis no demuestra por sí solo que una orden cumpla cualquier petición. Las acciones locales concretas siguen evitando la inferencia.
 
 ## Instalar y ejecutar
 
@@ -40,15 +40,15 @@ Instalación por usuario en `%LOCALAPPDATA%\ChameleonAI`. El PATH se amplía con
 
 ## Chameleon Terminal
 
-CMD por defecto; abre otra sesión con el selector de shell o **+ Nueva sesión**. Los programas interactivos reciben entrada directa. En el prompt principal puedes escribir `Downloads` o una petición natural. Los comandos reconocidos, aliases y scripts van directamente al PTY. **Entrada directa** permite forzar entrada directa cuando lo necesites. **Guía** muestra ejemplos; **Ajustes** personaliza fuente, cursor, IA y privacidad.
+CMD por defecto; abre otra sesión con el selector de shell o **+**. Los programas interactivos reciben entrada directa. En el prompt principal puedes escribir `Downloads` o una petición natural. Los comandos reconocidos, aliases y scripts van directamente al PTY. **Entrada directa** permite forzar entrada directa cuando lo necesites. **Guía** muestra ejemplos; **Ajustes** personaliza fuente, cursor, IA y privacidad.
 
 Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; Ctrl+Shift+C/V copia/pega; Ctrl+`+`/`-` cambia fuente; F11 pantalla completa. Las flechas, Tab e historial los gestiona el shell real. El pegado multilínea siempre se envía como entrada directa.
 
 ## IA, privacidad y seguridad
 
-El panel lateral muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
+Abre **IA y permisos** para ver los controles de la sesión. El panel muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
 
-En 0.5.1 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay correcciones acotadas si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
+En 0.6.0 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay correcciones acotadas si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
 
 Elige **qwen3:4b-instruct** (~2,5 GB) o **qwen2.5:0.5b** (~398 MB) en Setup, Ajustes o el panel del terminal. En Ajustes puedes introducir otra etiqueta local y pulsar **Descargar si falta y probar modelo**. El modelo pequeño consume menos recursos y puede cometer más errores; la selección no cambia silenciosamente a otro modelo.
 
@@ -59,6 +59,8 @@ Solo se contacta `http://127.0.0.1:11434`, sin proxies ni fallback cloud. Las re
 No hay telemetría. El historial permanente está **desactivado**. El contexto externo se limita a seis elementos redactados y caduca a los 30 minutos; identifica PID y fecha de creación para evitar reutilización de PID. No pretende observar comandos normales en terminales externas. La GUI conserva solo una cola limitada de salida en memoria. La redacción de secretos es básica, no infalible.
 
 El acceso se elige en **Ajustes → Acceso del modelo**: Solo lectura, Equilibrado, Desarrollador, Personalizado o Acceso total. Personalizado permite elegir lectura, escritura, borrado, comandos, scripts, red, sistema y confirmaciones. Equilibrado es el predeterminado; Desarrollador permite ejecución arbitraria con confirmación. **Acceso total elimina los bloqueos y confirmaciones de Chameleon**, con los permisos que ya tenga tu usuario de Windows. No concede privilegios administrativos ni evita UAC/ACL. Estos controles son una política de la aplicación, no un sandbox del sistema; los scripts arbitrarios requieren todos los permisos de efectos porque pueden realizar cualquiera de esas operaciones. Los comandos escritos directamente siguen bajo tu control.
+
+La interfaz 0.6.0 usa verdes bosque, musgo y salvia, superficies mate y vidrio reservado para las barras de acciones. El panel de IA aparece bajo demanda sin redimensionar el terminal. Setup agrupa las opciones avanzadas y los detalles en desplegables. Los botones adaptan código MIT de [Codrops MagneticButtons](https://github.com/codrops/MagneticButtons) y [Motion Primitives Spotlight](https://github.com/ibelick/motion-primitives), con movimiento magnético, luz radial y transiciones reversibles; se respeta el movimiento reducido de Windows y los temporizadores se detienen en reposo. Fuentes y revisiones exactas en `src/chameleon/assets/licenses/ui-motion/PROVENANCE.md`.
 
 La interfaz Liquid Glass reutiliza el motor óptico y compositor MIT de [PyGlass](https://github.com/neomosh8/pyglass), adaptados a PySide6. El fondo procede únicamente de la propia aplicación. El vidrio se almacena en caché y se limita su resolución para reducir CPU/RAM. La licencia y la revisión exacta están incluidas en la distribución.
 
@@ -78,8 +80,8 @@ dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
 dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.5.1-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.5.1-source.zip        Código fuente listo para GitHub
+dist/ChameleonAI-0.6.0-windows-x64.zip   Paquete portable con Setup integrado
+dist/ChameleonAI-0.6.0-source.zip        Código fuente listo para GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 

@@ -3,8 +3,16 @@ import logging
 import time
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QResizeEvent
+from PySide6.QtCore import (
+    QEasingCurve,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    QTimer,
+    QUrl,
+)
+from PySide6.QtGui import QAction, QCloseEvent, QColor, QDesktopServices, QResizeEvent
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -12,6 +20,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -33,6 +42,7 @@ from chameleon.safety.engine import Assessment, Risk
 from chameleon.terminal.bridge import Bridge
 from chameleon.terminal.session import TerminalSession
 from chameleon.ui.glass import GlassCanvas, GlassFrame
+from chameleon.ui.motion import motion_enabled
 from chameleon.ui.widgets import BrandMark, MotionButton, StatusPill
 
 
@@ -77,18 +87,17 @@ class TerminalWindow(QMainWindow):
         outer.setSpacing(14)
         header = QHBoxLayout()
         header.setSpacing(14)
-        header.addWidget(BrandMark())
+        header.addWidget(BrandMark(size=36))
         brand = QVBoxLayout()
         title = QLabel("Chameleon")
-        title.setStyleSheet("font-size:23px;font-weight:600;color:#f0f6fc")
-        subtitle = QLabel("TU TERMINAL. CON INTELIGENCIA LOCAL.")
+        title.setStyleSheet("font-size:20px;font-weight:600;color:#edf3e9")
+        subtitle = QLabel("TERMINAL")
         subtitle.setObjectName("eyebrow")
         brand.addWidget(title)
         brand.addWidget(subtitle)
         header.addLayout(brand)
         header.addStretch()
         self.indicator = StatusPill()
-        header.addWidget(self.indicator)
         settings_button = MotionButton("Ajustes")
         settings_button.setToolTip("Personalizar terminal, IA y privacidad · Ctrl+,")
         settings_button.clicked.connect(self.settings)
@@ -96,13 +105,14 @@ class TerminalWindow(QMainWindow):
         outer.addLayout(header)
         body_row = QHBoxLayout()
         body_row.setSpacing(18)
-        workspace = GlassFrame()
+        workspace = QFrame()
+        self.workspace = workspace
         workspace.setObjectName("terminalFrame")
         workspace_layout = QVBoxLayout(workspace)
-        workspace_layout.setContentsMargins(1, 1, 1, 1)
+        workspace_layout.setContentsMargins(8, 8, 8, 8)
         workspace_layout.setSpacing(0)
-        bar = QFrame()
-        bar.setObjectName("workspaceBar")
+        bar = GlassFrame()
+        bar.setObjectName("commandDock")
         bar_layout = QHBoxLayout(bar)
         bar_layout.setContentsMargins(14, 10, 14, 10)
         shell_button = MotionButton(
@@ -131,27 +141,40 @@ class TerminalWindow(QMainWindow):
         bar_layout.addWidget(shell_button)
         local_badge = QLabel("LOCAL · PRIVADO")
         local_badge.setObjectName("badge")
-        bar_layout.addWidget(local_badge)
+        local_badge.hide()
         bar_layout.addStretch()
+        bar_layout.addWidget(self.indicator)
         raw_button = MotionButton("Entrada directa")
         raw_button.setCheckable(True)
         raw_button.setToolTip("Enviar toda la entrada al shell, sin interpretar lenguaje natural")
         self.raw_action = QAction("Entrada directa", self)
         self.raw_action.setCheckable(True)
         raw_button.toggled.connect(self.raw_action.setChecked)
+        self.raw_action.toggled.connect(raw_button.setChecked)
         self.raw_action.toggled.connect(
             lambda enabled: raw_button.setText("Directa: activa" if enabled else "Entrada directa")
         )
-        bar_layout.addWidget(raw_button)
+        raw_button.setFlat(True)
         guide = MotionButton("Guía")
         guide.clicked.connect(self.show_guide)
-        bar_layout.addWidget(guide)
-        new_button = MotionButton("+ Nueva sesión", primary=True)
+        header.insertWidget(header.count() - 1, guide)
+        guide.setFlat(True)
+        self.drawer_button = MotionButton("IA y permisos")
+        self.drawer_button.setFixedWidth(150)
+        self.drawer_button.setCheckable(True)
+        self.drawer_button.toggled.connect(self.toggle_insights)
+        self.drawer_button.setToolTip("Modelo, permisos y detalle de la consulta")
+        bar_layout.addWidget(self.drawer_button)
+        new_button = MotionButton("+")
+        new_button.setFixedWidth(44)
+        new_button.setToolTip("Nueva sesión")
+        new_button.setAccessibleName("Nueva sesión")
         new_button.clicked.connect(lambda: self.new_session(self.config.terminal.shell))
         bar_layout.addWidget(new_button)
-        workspace_layout.addWidget(bar)
+        outer.addWidget(bar)
         self.view = QWebEngineView(self)
         self.view.setPage(LocalPage(self.view))
+        self.view.page().setBackgroundColor(QColor("#0b100d"))
         settings = self.view.settings()
         settings.setAttribute(
             QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False
@@ -160,17 +183,17 @@ class TerminalWindow(QMainWindow):
         settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanPaste, True)
         workspace_layout.addWidget(self.view, 1)
         body_row.addWidget(workspace, 1)
-        self.insight_panel = GlassFrame()
+        self.insight_panel = QFrame()
         self.insight_panel.setObjectName("insightPanel")
-        self.insight_panel.setFixedWidth(280)
+        self.insight_panel.setMinimumWidth(290)
         insight = QVBoxLayout(self.insight_panel)
         insight.setContentsMargins(20, 22, 20, 20)
         insight.setSpacing(15)
-        label = QLabel("TU ASISTENTE")
+        label = QLabel("CONFIGURACIÓN DE LA SESIÓN")
         label.setObjectName("eyebrow")
         insight.addWidget(label)
-        title = QLabel("Tu espacio.\nTus reglas.")
-        title.setStyleSheet("font-size:23px;font-weight:600;color:#eef6f6")
+        title = QLabel("IA y permisos")
+        title.setStyleSheet("font-size:21px;font-weight:600;color:#edf3e9")
         insight.addWidget(title)
         self.model_picker = QComboBox()
         self.model_picker.addItems(list(MODELS))
@@ -178,6 +201,9 @@ class TerminalWindow(QMainWindow):
             self.model_picker.addItem(config.ai.model)
         self.model_picker.setCurrentText(config.ai.model)
         self.model_picker.currentTextChanged.connect(self.change_model)
+        model_label = QLabel("Modelo local")
+        model_label.setObjectName("muted")
+        insight.addWidget(model_label)
         insight.addWidget(self.model_picker)
         self.access_picker = QComboBox()
         for mode, mode_label in (
@@ -193,6 +219,9 @@ class TerminalWindow(QMainWindow):
         self.access_picker.setToolTip(
             "Permisos para esta ventana. Personaliza y guarda en Ajustes → Acceso del modelo."
         )
+        access_label = QLabel("Acceso del modelo")
+        access_label.setObjectName("muted")
+        insight.addWidget(access_label)
         insight.addWidget(self.access_picker)
         self.route = QComboBox()
         self.route.addItems(["Automático · rápido", "Qwen · siempre"])
@@ -202,6 +231,7 @@ class TerminalWindow(QMainWindow):
         )
         self.route.currentIndexChanged.connect(self.change_route)
         insight.addWidget(self.route)
+        insight.addWidget(raw_button)
         self.source_label = QLabel("Escribe una petición para ver su origen.")
         self.source_label.setWordWrap(True)
         self.source_label.setObjectName("muted")
@@ -223,23 +253,29 @@ class TerminalWindow(QMainWindow):
         self.answer_label.setMaximumHeight(150)
         insight.addWidget(self.answer_label)
         insight.addStretch()
-        example = QLabel("Prueba con una frase\n\n«borra el archivo Prueba.txt\nen Downloads»")
-        example.setWordWrap(True)
-        example.setStyleSheet("color:#8eb3ad;font-size:12px;line-height:1.5")
-        insight.addWidget(example)
-        help_button = MotionButton("Explorar ejemplos")
-        help_button.clicked.connect(self.show_guide)
-        insight.addWidget(help_button)
-        privacy = QLabel("En tu ordenador.\nTus archivos, bajo tu control.")
-        privacy.setObjectName("muted")
-        privacy.setStyleSheet("color:#72938f;font-size:11px")
-        insight.addWidget(privacy)
-        self.insight_scroll = QScrollArea()
+        self.insight_scroll = QScrollArea(container)
         self.insight_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.insight_scroll.setWidgetResizable(True)
         self.insight_scroll.setWidget(self.insight_panel)
-        self.insight_scroll.setFixedWidth(292)
-        body_row.addWidget(self.insight_scroll)
+        self.insight_scroll.setFixedWidth(320)
+        self.insight_scroll.hide()
+        self._drawer_open = False
+        self.drawer_effect = QGraphicsOpacityEffect(self.insight_scroll)
+        self.insight_scroll.setGraphicsEffect(self.drawer_effect)
+        self.drawer_motion = QParallelAnimationGroup(self)
+        self.drawer_slide = QPropertyAnimation(self.insight_scroll, b"pos", self)
+        self.drawer_fade = QPropertyAnimation(self.drawer_effect, b"opacity", self)
+        for animation in (self.drawer_slide, self.drawer_fade):
+            animation.setDuration(280 if motion_enabled() else 0)
+            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.drawer_motion.addAnimation(self.drawer_slide)
+        self.drawer_motion.addAnimation(self.drawer_fade)
+        self.drawer_motion.finished.connect(self.finish_insights)
+        self.drawer_escape = QAction(self)
+        self.drawer_escape.setShortcut("Escape")
+        self.drawer_escape.setEnabled(False)
+        self.drawer_escape.triggered.connect(lambda: self.drawer_button.setChecked(False))
+        self.addAction(self.drawer_escape)
         outer.addLayout(body_row, 1)
         footer = QHBoxLayout()
         self.path_label = QLabel(str(Path(config.terminal.start_directory or Path.home())))
@@ -251,7 +287,7 @@ class TerminalWindow(QMainWindow):
         self.activity_label.setObjectName("muted")
         footer.addWidget(self.activity_label)
         keys = QLabel("Ctrl+C cancelar   ·   Ctrl+Shift+V pegar   ·   F11 ampliar")
-        keys.setStyleSheet("font-size:11px;color:#7f93ab;margin-left:18px")
+        keys.setStyleSheet("font-size:11px;color:#819783;margin-left:18px")
         footer.addWidget(keys)
         outer.addLayout(footer)
         self.setCentralWidget(container)
@@ -322,7 +358,7 @@ class TerminalWindow(QMainWindow):
     def on_status(self, status: str) -> None:
         processing = status == "PROCESSING" or status.startswith("QWEN ")
         color = (
-            "#81e3bc"
+            "#b5d89a"
             if status == "AI LOCAL"
             else "#e6c275"
             if processing
@@ -331,7 +367,7 @@ class TerminalWindow(QMainWindow):
             else "#7d9287"
         )
         labels = {
-            "AI LOCAL": "Qwen disponible · local",
+            "AI LOCAL": "IA local disponible",
             "PROCESSING": "Preparando tu petición",
             "AI OFFLINE": "Qwen sin conexión · reglas listas",
             "AI CHECKING": "Comprobando Qwen",
@@ -365,8 +401,10 @@ class TerminalWindow(QMainWindow):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
-        if hasattr(self, "insight_scroll"):
-            self.insight_scroll.setVisible(self.width() >= 1080)
+        if hasattr(self, "insight_scroll") and self._drawer_open:
+            self.drawer_motion.stop()
+            self.drawer_effect.setOpacity(1.0)
+            QTimer.singleShot(0, self.position_insights)
         if hasattr(self, "path_label"):
             self.set_location(self.path_label.toolTip() or self.path_label.text())
 
@@ -374,6 +412,41 @@ class TerminalWindow(QMainWindow):
         self.config.ai.prefer_model = index == 1
         if self.session:
             self.session.config.ai.prefer_model = index == 1
+
+    def position_insights(self) -> QPoint:
+        body = self.centralWidget()
+        if not body:
+            return QPoint()
+        top = self.workspace.mapTo(body, QPoint(0, 0)).y() + 8
+        target = QPoint(body.width() - self.insight_scroll.width() - 30, top)
+        self.insight_scroll.setFixedHeight(max(180, self.workspace.height() - 16))
+        self.insight_scroll.move(target)
+        return target
+
+    def finish_insights(self) -> None:
+        if not self._drawer_open:
+            self.insight_scroll.hide()
+            self.view.setFocus(Qt.FocusReason.OtherFocusReason)
+            self.view.page().runJavaScript("if(window.focusTerminal)focusTerminal();")
+
+    def toggle_insights(self, opened: bool) -> None:
+        if not hasattr(self, "insight_scroll"):
+            return
+        self._drawer_open = opened
+        self.drawer_button.setText("Cerrar panel" if opened else "IA y permisos")
+        self.drawer_escape.setEnabled(opened)
+        self.drawer_motion.stop()
+        was_visible = self.insight_scroll.isVisible()
+        old_pos = self.insight_scroll.pos()
+        old_opacity = self.drawer_effect.opacity()
+        target = self.position_insights()
+        self.insight_scroll.show()
+        self.insight_scroll.raise_()
+        self.drawer_slide.setStartValue(old_pos if was_visible else target + QPoint(22, 0))
+        self.drawer_slide.setEndValue(target if opened else target + QPoint(22, 0))
+        self.drawer_fade.setStartValue(old_opacity if was_visible else 0.0)
+        self.drawer_fade.setEndValue(1.0 if opened else 0.0)
+        self.drawer_motion.start()
 
     def change_model(self, tag: str) -> None:
         import threading
@@ -541,6 +614,8 @@ class TerminalWindow(QMainWindow):
             if self.session:
                 self.session.update_config(self.config)
             self.route.setCurrentIndex(1 if self.config.ai.prefer_model else 0)
+            if self.model_picker.findText(self.config.ai.model) < 0:
+                self.model_picker.addItem(self.config.ai.model)
             self.model_picker.setCurrentText(self.config.ai.model)
             self.access_picker.setCurrentIndex(self.access_picker.findData(self.config.safety.mode))
             self.apply_settings()

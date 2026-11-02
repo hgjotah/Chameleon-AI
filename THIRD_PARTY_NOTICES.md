@@ -20,3 +20,16 @@ Revision: c12d91f1526badbe18f619ff893d2cdbbd86dac5.
 Complete effect.py/refract.py modules adapted from PyQt6 to PySide6. Full license
 and provenance: assets/licenses/pyglass/. NumPy's bundled notices are included
 under assets/licenses/numpy/.
+
+# Native motion adaptations
+
+- Codrops MagneticButtons, MIT, revision b2ee8ac9cd561e13198335cca5684fe1c31d543c.
+  https://github.com/codrops/MagneticButtons
+- Motion Primitives Spotlight, MIT, revision 120f64f6ca60348e251f929e9c81f11ccbe45eda.
+  https://github.com/ibelick/motion-primitives
+
+Pointer translation/counter-translation and spotlight geometry are adapted to
+Qt painting. Original source files, licenses and exact adaptation notes accompany
+the runtime in assets/licenses/ui-motion. React/Motion/GSAP are not bundled.
+The PyGlass app adapter disables spectral glow; its reflected light is tuned to
+the forest/sage palette. See assets/licenses/pyglass/PROVENANCE.md.

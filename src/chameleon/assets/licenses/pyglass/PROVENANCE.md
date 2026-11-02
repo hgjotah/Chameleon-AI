@@ -12,3 +12,7 @@ Chameleon's glass.py connects the upstream renderer/compositor to native layouts
 Backdrop pixels come exclusively from the application's own painted background;
 desktop/window capture modules are not included. Refraction is cached, resolution
 bounded, and recomputed after resize/move rather than on each terminal output.
+
+Chameleon 0.6.0: app-owned forest/sage lighting, no spectral dispersion glow;
+reflected environment light coefficients adapted to neutral/green. Refraction
+lengths scale with the cached image, retaining a consistent logical bevel.

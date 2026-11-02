@@ -1,6 +1,45 @@
-# Delivery validation · 0.5.1 · 2026-11-01
+# Delivery validation · 0.6.0 · 2026-11-02
 
-## Current release · 0.5.1
+## Current release · 0.6.0
+
+Ruff passes and mypy checks 58 source files. The complete non-model suite passes
+**221 tests, 1 skipped, 4 deselected** (72.91 s). The new isolated Qt subprocess
+checks exercise fresh install and version update: both primary actions invoke
+installation, external-software/policy consent defaults off, advanced options and
+logs start collapsed, and the details control opens its log.
+
+Actual Qt interaction checks verify that the assistant drawer starts hidden,
+opening/closing keeps the PTY viewport width unchanged, closure restores xterm
+keyboard focus, and compact dimensions keep the drawer on screen. Button timers
+stop at rest/hide; reduced motion disables spatial animation. Evidence:
+`artifacts/ui06/interaction-results.json`, `ui06-interactions.log` and a captured
+`drawer-motion.gif`. Screenshots cover the terminal, open drawer, compact window,
+fresh Setup, hover lighting, Settings and access presets.
+
+The source adapts actual MIT-licensed Codrops and Motion Primitives code to Qt;
+pinned original sources and complete licenses are included. No React/GSAP runtime
+or remote interface assets are required. The original user logo is unchanged.
+The underlying AI, access policy and shell protocol are unchanged in this release.
+
+The clean release build verifies all 56 bundled Chameleon modules against the
+current source, every interface/shell asset and the exact embedded installer
+payload/logo. All ten frozen checks pass: Core version, native CMD/PowerShell
+parent state, Qt/xterm/ConPTY, unavailable AI, self-extracting Setup/Settings,
+125%/150% scaling and isolated uninstall preserving the original profile.
+The final frozen Setup/Settings screenshots were inspected visually.
+
+The physical account is updated to 0.6.0 with the frozen Core. Configuration,
+selected qwen2.5:0.5b/Full profile, user PATH and PowerShell profile bytes are
+unchanged; installed Core SHA256 matches the release. Actual installed CMD,
+Windows PowerShell 5.1 and PowerShell 7 created, read, copied and deleted an owned
+QA file, preserving literal Unicode and an ampersand. Doctor passes all 12 checks.
+The installer also completed its selected-model local inference check. Evidence:
+`artifacts/build06-release.log`, `artifacts/frozen/results.json`,
+`installed-update06.log`, `installed-native06.log`, `doctor06.log` and
+`actual_account_after06.json`. These UI changes do not establish new model
+accuracy or performance guarantees.
+
+## Previous release · 0.5.1
 
 Ruff passed and mypy checked 56 source files. The final non-model suite passed
 **219 tests**, with one documented CMD delayed-expansion skip. New checks cover

@@ -4,7 +4,7 @@ import shutil
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Signal
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from chameleon.core.config import Config, data_dir, save_config
 from chameleon.llm.models import MODELS, model_description
 from chameleon.ui.glass import install_glass
+from chameleon.ui.motion import motion_enabled
 from chameleon.ui.widgets import BrandMark, MotionButton
 
 
@@ -38,28 +39,29 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.config = config.model_copy(deep=True)
         self.setWindowTitle("Chameleon · Ajustes")
-        self.resize(850, 630)
+        self.resize(900, 660)
         self.setMinimumSize(760, 570)
         install_glass(self)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(26, 22, 26, 22)
         layout.setSpacing(20)
         header = QHBoxLayout()
-        header.addWidget(BrandMark())
-        heading = QLabel("Hazlo tuyo.")
+        header.addWidget(BrandMark(size=36))
+        heading = QLabel("Ajustes")
         heading.setObjectName("heading")
         header.addWidget(heading)
         header.addStretch()
         badge = QLabel("AJUSTES LOCALES")
         badge.setObjectName("badge")
-        header.addWidget(badge)
+        badge.hide()
         layout.addLayout(header)
         content = QHBoxLayout()
         content.setSpacing(22)
         navigation = QListWidget()
-        navigation.setFixedWidth(158)
+        navigation.setFixedWidth(172)
+        self.navigation = navigation
         navigation.setStyleSheet(
-            "QListWidget{background:rgba(18,32,55,100);border:1px solid rgba(190,219,245,45);border-radius:18px;padding:8px} QListWidget::item{padding:14px 9px;border-radius:12px;color:#a9bfd5} QListWidget::item:selected{background:rgba(99,186,188,65);color:#c0fff0} QListWidget::item:hover{background:rgba(145,177,208,35)}"
+            "QListWidget{background:#121f16;border:1px solid #2c4130;border-radius:14px;padding:7px;outline:none} QListWidget:focus{border-color:#76936b} QListWidget::item{padding:14px 12px;border-radius:8px;color:#91a990} QListWidget::item:selected{background:#273e2b;color:#e8f3de} QListWidget::item:hover{background:#1d3022}"
         )
         tabs = QStackedWidget()
         content.addWidget(navigation)
@@ -68,7 +70,7 @@ class SettingsDialog(QDialog):
         fade = QGraphicsOpacityEffect(tabs)
         tabs.setGraphicsEffect(fade)
         self.page_animation = QPropertyAnimation(fade, b"opacity", self)
-        self.page_animation.setDuration(180)
+        self.page_animation.setDuration(190 if motion_enabled() else 0)
         self.page_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
 
         def select_page(index: int) -> None:
@@ -79,15 +81,39 @@ class SettingsDialog(QDialog):
             self.page_animation.start()
 
         navigation.currentRowChanged.connect(select_page)
+        self.nav_accent = QFrame(navigation.viewport())
+        self.nav_accent.setFixedSize(3, 26)
+        self.nav_accent.setStyleSheet("background:#b8d79e;border-radius:1px")
+        self.nav_accent.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.nav_animation = QPropertyAnimation(self.nav_accent, b"pos", self)
+        self.nav_animation.setDuration(280 if motion_enabled() else 0)
+        self.nav_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        def move_accent(index: int) -> None:
+            item = navigation.item(index)
+            if item:
+                rect = navigation.visualItemRect(item)
+                self.nav_animation.stop()
+                self.nav_animation.setStartValue(self.nav_accent.pos())
+                self.nav_animation.setEndValue(QPoint(3, rect.center().y() - 13))
+                self.nav_animation.start()
+
+        navigation.currentRowChanged.connect(move_accent)
+        QTimer.singleShot(0, lambda: move_accent(navigation.currentRow()))
         self.fields: dict[tuple[str, str], QLineEdit | QComboBox | QSpinBox | QCheckBox] = {}
 
         def page(name: str) -> QFormLayout:
             widget = QWidget()
             form = QFormLayout(widget)
             form.setContentsMargins(8, 12, 8, 12)
-            form.setVerticalSpacing(18)
+            form.setVerticalSpacing(15)
             form.setHorizontalSpacing(20)
             form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+            page_title = QLabel(name)
+            page_title.setStyleSheet(
+                "font-size:21px;font-weight:600;color:#e6efdf;margin-bottom:15px"
+            )
+            form.addRow(page_title)
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -111,7 +137,7 @@ class SettingsDialog(QDialog):
                 widget.addItems(choices)
                 widget.setCurrentText(str(value))
             elif isinstance(value, bool):
-                widget = QCheckBox()
+                widget = QCheckBox(label)
                 widget.setChecked(value)
             elif isinstance(value, int):
                 widget = QSpinBox()
@@ -120,7 +146,10 @@ class SettingsDialog(QDialog):
             else:
                 widget = QLineEdit(str(value))
             self.fields[section, name] = widget
-            form.addRow(label, widget)
+            if isinstance(widget, QCheckBox):
+                form.addRow(widget)
+            else:
+                form.addRow(label, widget)
 
         general = page("General")
         field(
@@ -207,16 +236,22 @@ class SettingsDialog(QDialog):
                 if chosen == "full"
                 else "Desarrollador permite cualquier comando/script con confirmación."
                 if chosen == "developer"
-                else "Los scripts son código arbitrario: necesitan todos los permisos de efectos. Estos controles no son un sandbox de Windows."
+                else "Sólo lectura y navegación, sin modificar archivos."
+                if chosen == "read_only"
+                else "Lectura, archivos y comandos habituales. Los cambios piden confirmación."
+                if chosen == "balanced"
+                else "Elige las capacidades. Los scripts requieren todos los permisos de efectos; no es un sandbox de Windows."
             )
             preset = SafetyConfig(mode=chosen)
             for key, enabled in preset.permissions().items():
                 control = self.fields["safety", "allow_" + key]
                 control.setEnabled(chosen == "custom")
+                safety.setRowVisible(control, chosen == "custom")
                 if chosen != "custom" and isinstance(control, QCheckBox):
                     control.setChecked(enabled)
             confirmation = self.fields["safety", "confirm_changes"]
             confirmation.setEnabled(chosen == "custom")
+            safety.setRowVisible(confirmation, chosen == "custom")
             if chosen != "custom" and isinstance(confirmation, QCheckBox):
                 confirmation.setChecked(preset.confirms())
 
@@ -235,7 +270,7 @@ class SettingsDialog(QDialog):
         footer = QHBoxLayout()
         note = QLabel("Los cambios de shell se aplican a nuevas sesiones.")
         note.setObjectName("muted")
-        note.setStyleSheet("color:#8b9fb7;font-size:11px")
+        note.setStyleSheet("color:#8ea68e;font-size:11px")
         footer.addWidget(note, 1)
         cancel = MotionButton("Cancelar")
         cancel.clicked.connect(self.reject)

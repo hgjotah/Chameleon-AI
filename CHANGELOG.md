@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 · 2026-11-02
+
+- Nueva interfaz en verdes bosque, musgo y salvia: superficies mate, menos controles simultáneos y vidrio reservado para las barras de acciones. Se conserva el logo original.
+- Corregido el resplandor espectral del material que añadía colores ajenos a la paleta; refracción y bisel proporcionales a la resolución de caché, iluminación localizada y bordes más claros.
+- Botones con desplazamiento magnético, contramovimiento del texto, luz radial y presión reversible. Adaptaciones nativas de código MIT de Codrops y Motion Primitives, con fuentes, revisiones y licencias incluidas.
+- El panel «IA y permisos» aparece bajo demanda con transición; no cambia las dimensiones del PTY y devuelve el foco al terminal al cerrarse. Escape cierra el panel.
+- Setup simplificado: opciones avanzadas y registro desplegables, estado compacto y actualización explícita cuando hay una versión anterior. Ajustes con navegación y permisos personalizados progresivos.
+- Animaciones detenidas en reposo y al ocultar controles; respeto de la preferencia de movimiento reducido de Windows. Comprobaciones de instalación nueva y actualización en procesos Qt aislados.
+- Se mantienen los modelos, permisos, comandos y configuración existentes.
+
 ## 0.5.1 · 2026-11-01
 
 - Fundamentación en el sistema real: versión/edición/lenguaje del shell, ruta del ejecutable, arquitectura, idioma, carpetas conocidas redirigidas y variables permitidas; contexto seleccionado según la petición.

@@ -1,11 +1,13 @@
 """Native PySide6 layout adapter for the MIT PyGlass renderer (see provenance)."""
 
-from PySide6.QtCore import QPoint, QRectF, Qt, QTimer
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import (
     QColor,
     QImage,
     QPainter,
+    QPainterPath,
     QPaintEvent,
+    QPen,
     QPixmap,
     QRadialGradient,
     QResizeEvent,
@@ -27,19 +29,33 @@ class GlassCanvas(QWidget):
     def scene_pixmap(self) -> QPixmap:
         if self._scene.size() != self.size():
             image = QImage(self.size(), QImage.Format.Format_RGBA8888)
-            image.fill(QColor("#0a1021"))
+            image.fill(QColor("#0b110d"))
             painter = QPainter(image)
             for x, y, r, color in (
-                (0.05, 0.12, 0.75, "#17495c"),
-                (0.92, 0.0, 0.65, "#493b72"),
-                (0.72, 1.1, 0.7, "#133f45"),
+                (0.16, -0.15, 0.8, "#28432c"),
+                (1.1, 0.8, 0.7, "#1d3324"),
             ):
                 glow = QRadialGradient(
                     self.width() * x, self.height() * y, max(self.width(), self.height()) * r
                 )
                 glow.setColorAt(0, QColor(color))
-                glow.setColorAt(1, QColor(10, 16, 33, 0))
+                glow.setColorAt(1, QColor(11, 17, 13, 0))
                 painter.fillRect(self.rect(), glow)
+            # Quiet contours give the lens actual detail to bend. Unlike desktop
+            # capture, all pixels belong to this application.
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            for index in range(5):
+                path = QPainterPath(QPointF(-120, 25 + index * 19))
+                path.cubicTo(
+                    self.width() * 0.25,
+                    240 + index * 18,
+                    self.width() * 0.62,
+                    -155 + index * 23,
+                    self.width() + 100,
+                    110 + index * 24,
+                )
+                painter.setPen(QPen(QColor(151, 185, 135, 8 if index != 2 else 19), 1.1))
+                painter.drawPath(path)
             painter.end()
             self._scene = QPixmap.fromImage(image)
         return self._scene
@@ -56,24 +72,34 @@ class GlassFrame(QFrame):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._glass: QPixmap | None = None
+        self._light = QPointF(80, 0)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self._pending = QTimer(self)
         self._pending.setSingleShot(True)
         self._pending.setInterval(130)
         self._pending.timeout.connect(self.refresh_glass)
         self._style = GlassStyle(
             shadow_layers=0,
-            tint_top=24,
-            tint_bottom=10,
-            rim_top=105,
-            rim_bottom=65,
-            rim_mid=22,
-            sheen_alpha=12,
+            tint_top=12,
+            tint_bottom=4,
+            rim_top=100,
+            rim_bottom=30,
+            rim_mid=18,
+            sheen_alpha=8,
             rim_width=1.0,
         )
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._pending.start()
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.HoverMove:
+            self._light = event.position()  # type: ignore[attr-defined]
+            self.update()
+        elif event.type() == QEvent.Type.Move and hasattr(self, "_pending"):
+            self._pending.start()
+        return super().event(event)
 
     def showEvent(self, event: object) -> None:
         super().showEvent(event)  # type: ignore[arg-type]
@@ -101,10 +127,20 @@ class GlassFrame(QFrame):
         width = max(2, int(self.width() * scale))
         height = max(2, int(self.height() * scale))
         renderer = GlassRenderer(
-            GlassMaterial(thickness=0.24, frost=0.18, pad=32, bevel=24, strength=14, chroma=0.025),
+            GlassMaterial(
+                thickness=0.44,
+                frost=0.07,
+                pad=max(12, 34 * scale),
+                bevel=20 * scale,
+                strength=12 * scale,
+                chroma=0.002,
+                disp_glow=0,
+                reflect=0.55,
+                ior_edge=2.6,
+            ),
             width,
             height,
-            20 * scale,
+            18 * scale,
         )
         refracted = renderer.refract(
             qimage_to_array(scene), QPoint(int(origin.x() * scale), int(origin.y() * scale)), 1.0
@@ -122,10 +158,19 @@ class GlassFrame(QFrame):
         paint_glass(
             painter,
             QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
-            20,
+            18,
             self._glass,
             style=self._style,
         )
+        # Cursor-lit rim, adapted from Motion Primitives' Spotlight coordinates.
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 18, 18)
+        light = QRadialGradient(self._light, 210)
+        light.setColorAt(0, QColor(226, 248, 214, 105))
+        light.setColorAt(1, QColor(226, 248, 214, 0))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(light, 1.1))
+        painter.drawPath(path)
 
 
 def install_glass(dialog: QWidget) -> None:

@@ -105,8 +105,16 @@ PTY reader and AI workers do not call widgets. Qt signals marshal results to the
 
 ## Distribution and updates
 
-PyInstaller onedir shares Qt/Python among console Core and windowed Terminal/Setup. A small standard-library bootstrap embeds the release ZIP and starts the full PySide Setup from a random temporary directory. This avoids duplicating Qt inside the installer and supports repair without holding installed DLLs open. Setup can be run again with a newer release for Update. Version is semantic `0.1.0`; no update server or background downloader exists. Releases can add signing without changing core interfaces.
+PyInstaller onedir shares Qt/Python among console Core and windowed Terminal/Setup. A small standard-library bootstrap embeds the release ZIP and starts the full PySide Setup from a random temporary directory. This avoids duplicating Qt inside the installer and supports repair without holding installed DLLs open. Setup can be run again with a newer release for Update. Version is semantic `0.6.0`; no update server or background downloader exists. Releases can add signing without changing core interfaces.
 
 The build limits dependency scanning to Windows and the Python runtime paths, preventing unrelated developer-tool ICU/API shim DLLs from entering Qt's runtime. Before spawning native shells or external programs, Windows temporarily restores the normal DLL search path and removes bundled paths from the child environment, then restores the parent runtime immediately after creation. See [PyInstaller external programs](https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application).
 
 pywinpty's side-by-side `conpty.dll` requires its matching `OpenConsole.exe` from the published wheel. The spec explicitly bundles that host because dependency scanning only discovers linked DLLs. Frozen smoke tests catch a missing host by requiring actual shell output, navigation and direct commands. The backend argument uses a nonempty representation of ConPTY's zero constant to prevent pywinpty's environment fallback from selecting legacy WinPTY.
+
+## Native interface and motion (0.6.0)
+
+The forest palette separates opaque terminal content and matte configuration surfaces from cached optical glass action bars. PyGlass dispersion glow is disabled; the environment lighting is neutral/green. Lens dimensions scale with the capped cache resolution. Pointer lighting is painted over the cached image without recomputing optical kernels on every hover.
+
+`ui/controls.py` adapts Codrops magnetic interpolation and Motion Primitives pointer spotlight to native Qt painting. Only painted content moves: hit regions and layouts remain stable. Timers stop at rest, hide and disable. `ui/motion.py` reads Windows client-area animation preference; `CHAMELEON_REDUCED_MOTION=1` provides a diagnostic override. No browser framework runtime is added.
+
+The terminal inspector overlays its viewport, so opening it never resizes ConPTY. Closing restores xterm focus. Setup progressively discloses advanced options/logs and distinguishes fresh install, version update and opening an existing current installation. Custom capability switches appear only for the Custom access preset; backend policy remains unchanged.
