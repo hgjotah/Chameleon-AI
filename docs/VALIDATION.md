@@ -1,6 +1,26 @@
-# Delivery validation · 0.6.0 · 2026-11-02
+# Delivery validation · 0.7.1 · 2026-11-04
 
-## Current release · 0.6.0
+## Current release · 0.7.1
+
+The application interface, CLI help/preview/model selection, installer, diagnostics,
+app-authored errors and project documentation use English. English and Spanish
+request recognition, literal user paths/content and native program output are
+preserved. Qt's default presentation locale is en_US; new configurations default
+to en, while existing saved preferences are retained. Model-generated summaries
+and clarification text are instructed to use English without translating literals.
+
+A structural AST comparison verifies that source control flow is unchanged except
+for the added Qt UI-locale call. Path resolution and direct-command recognition
+functions match the previous implementation exactly. Actual Qt screenshots were
+inspected for Setup, Settings, access controls, terminal and the session drawer.
+The focused CLI suite passes 49 tests, including real CMD/PowerShell keyboard
+interaction. The final full non-model suite passes 267 tests, with one documented
+skip and four optional model tests deselected (152.57 s). Ruff passes and mypy
+checks 60 source files. Source-check evidence: `artifacts/build071-release.log`; final distributable build:
+`artifacts/build071-final.log`. Evidence is under ignored `artifacts/ui071/`,
+`english-structure-audit.json` and `english-cli-tests.log`.
+
+## Previous release · 0.6.0
 
 Ruff passes and mypy checks 58 source files. The complete non-model suite passes
 **221 tests, 1 skipped, 4 deselected** (72.91 s). The new isolated Qt subprocess

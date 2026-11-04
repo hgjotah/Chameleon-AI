@@ -83,17 +83,17 @@ class Context(BaseModel):
 def apply_shell_state(context: Context, encoded: str) -> None:
     """Accept bounded caller metadata, never execution policy or function bodies."""
     if len(encoded) > 16384:
-        raise ValueError("Estado del shell demasiado grande.")
+        raise ValueError("Shell state is too large.")
     state = json.loads(base64.b64decode(encoded, validate=True).decode("utf-8"))
     if not isinstance(state, dict):
-        raise ValueError("Estado del shell inválido.")
+        raise ValueError("Invalid shell state.")
     if isinstance(state.get("edition"), str):
         context.shell_edition = state["edition"][:80]
     if isinstance(state.get("language_mode"), str):
         context.language_mode = state["language_mode"][:80]
     commands = state.get("commands", [])
     if not isinstance(commands, list):
-        raise ValueError("Lista de comandos del shell inválida.")
+        raise ValueError("Invalid shell command list.")
     for name in commands[:24]:
         if isinstance(name, str) and re.fullmatch(r"[\w.-]{1,128}", name):
             context.executables[name.casefold()] = "existing caller function/alias"

@@ -19,7 +19,7 @@ def existing_script(request: str, context: Context) -> tuple[Path, str] | None:
 
     target = resolve_path(match[1], context)
     if not target.is_file():
-        raise FileNotFoundError("El script indicado no existe: " + str(target))
+        raise FileNotFoundError("The specified script does not exist: " + str(target))
     relative = target.is_relative_to(context.cwd)
     name = str(target.relative_to(context.cwd)) if relative else str(target)
     suffix = target.suffix.casefold()

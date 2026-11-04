@@ -32,7 +32,7 @@ def main() -> int:
     ).pack(pady=(8, 12))
     label = tk.Label(
         window,
-        text="Preparando el instalador local…",
+        text="Preparing the local installer…",
         bg="#0b110d",
         fg="#e1eadb",
         font=("Segoe UI", 12),
@@ -43,7 +43,7 @@ def main() -> int:
     style.configure("Chameleon.Horizontal.TProgressbar", background="#b5cf97", troughcolor="#253b2c", borderwidth=0, lightcolor="#b5cf97", darkcolor="#b5cf97")
     progress = ttk.Progressbar(window, style="Chameleon.Horizontal.TProgressbar", length=430, maximum=100)
     progress.pack(pady=18)
-    tk.Label(window, text="LOCAL · PRIVADO · SIN CUENTA", bg="#0b110d", fg="#8ca28b", font=("Segoe UI", 9)).pack()
+    tk.Label(window, text="LOCAL · PRIVATE · NO ACCOUNT", bg="#0b110d", fg="#8ca28b", font=("Segoe UI", 9)).pack()
     window.update()
     code = 1
     try:
@@ -62,7 +62,7 @@ def main() -> int:
                     completed += info.file_size
                     percent = int(completed * 100 / total)
                     progress["value"] = percent
-                    label.configure(text=f"Preparando el instalador local… {percent}%")
+                    label.configure(text=f"Preparing the local installer… {percent}%")
                     window.update()
                     if cancelled:
                         return 130
@@ -77,7 +77,7 @@ def main() -> int:
                 window.after(100)
             code = process.returncode
     except Exception as exc:
-        messagebox.showerror("Chameleon Setup", f"No se pudo abrir Setup: {exc}")
+        messagebox.showerror("Chameleon Setup", f"Could not open Setup: {exc}")
     finally:
         window.destroy()
     return code

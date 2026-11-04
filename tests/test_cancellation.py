@@ -39,7 +39,7 @@ def test_cancel_before_worker_initializes(tmp_path: Path, monkeypatch: pytest.Mo
         while not failures and time.monotonic() < deadline:
             app.processEvents()
             time.sleep(0.01)
-        assert failures == ["Cancelado."]
+        assert failures == ["Cancelled."]
         assert not plans and terminal.pending_command is None
     finally:
         terminal.close()

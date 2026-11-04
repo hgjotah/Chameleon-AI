@@ -1,116 +1,118 @@
 # Chameleon AI · Chameleon Terminal
 
-<img src="src/chameleon/assets/icons/chameleon.png" alt="Logo Chameleon Terminal" width="140">
+<img src="src/chameleon/assets/icons/chameleon.png" alt="Chameleon Terminal logo" width="140">
 
-Asistente local para **Windows 10 1809+ y Windows 11 x64**, escrito en Python 3.13, con Ollama y `qwen3:4b-instruct`. Convierte español o inglés en acciones validadas que se ejecutan en la sesión actual. Incluye un terminal gráfico de verdad: PySide6, ConPTY y xterm.js local.
+A local assistant for **Windows 10 1809+ and Windows 11 x64**, written in Python 3.13, using Ollama and `qwen3:4b-instruct`. It turns English or Spanish requests into validated actions in your current session. Includes a real graphical terminal: PySide6, ConPTY and locally bundled xterm.js.
 
 ```cmd
-chameleon ai ve a Downloads
-chameleon ai lista los pdf
-chameleon ai encuentra todos los PDF
-chameleon ai crea un archivo llamado notas.txt con contenido "Hola"
-chameleon ai crea una carpeta llamada proyecto
-chameleon ai copia notas.txt a copia.txt
-chameleon ai --dry-run busca archivos Python mayores de 1 MB
-chameleon ai elimina old.txt
-chameleon ai borra un archivo en Downloads llamado Prueba
-chameleon ai --model resume notas.txt
+chameleon ai go to Downloads
+chameleon ai list pdf
+chameleon ai find pdf
+chameleon ai create a file named notes.txt with content "Hello"
+chameleon ai create a folder named project
+chameleon ai copy notes.txt to copy.txt
+chameleon ai --dry-run find Python files larger than 1 MB
+chameleon ai delete old.txt
+chameleon ai delete a file in Downloads named Sample
+chameleon ai --force-model summarize notes.txt
 chameleon doctor
 ```
 
-`cd` persiste en CMD y PowerShell. Los comandos generados se ocultan salvo confirmación, `--show` o `--dry-run`. `dir`, `git status`, `python` y todos tus comandos normales siguen usando su shell original.
+`cd` persists in CMD and PowerShell. Generated commands are hidden except during confirmation, with `--show` or with `--dry-run`. `dir`, `git status`, `python` and all your regular commands continue to use their original shell.
 
-En **0.6.0**, crear archivos/carpetas, leer, copiar, mover y navegar se resuelven con reglas locales cuando la petición es concreta. Crear/copiar/mover nunca sobrescribe un destino existente. El perfil Equilibrado pide confirmación antes de los cambios; Acceso total sigue tu configuración sin confirmaciones. En Chameleon Terminal escribe la frase directamente; en CMD/PowerShell utiliza `chameleon ai`.
+Creating files/folders, reading, copying, moving and navigation use local rules when the request is specific. Create/copy/move never overwrite an existing destination. Balanced asks for confirmation before changes; Full access follows your configuration without application confirmations, except when you explicitly request the `--try` preview. In Chameleon Terminal, type your request directly; in CMD/PowerShell, use `chameleon ai`.
 
-Setup muestra por separado Ollama instalado, servicio activo y Qwen descargado. Deja marcada **Preparar IA** para comprobar los tres pasos; si falta Ollama solicitará consentimiento antes de descargar su instalador oficial. Espera al resultado de la inferencia real. El terminal puede instalarse aunque la descarga falle, pero Setup indicará **IA pendiente** y permitirá reparar.
+Setup shows Ollama installation, server availability and the downloaded model separately. Keep **Prepare AI and verify the connection** checked to verify all three. Installing missing Ollama requires consent before downloading its official installer. Wait for the real inference test. The terminal can be installed even if downloading fails, but Setup will report **AI pending** and offer Repair.
 
-Qwen envía progreso mientras genera la respuesta; sólo una respuesta completa y validada puede proponer acciones. En equipos con CPU, **Automático · rápido** evita el modelo para operaciones concretas. `--model` permite verificar una llamada real a Qwen. Los hilos de CPU se ajustan en Ajustes → IA (4 por defecto); la velocidad también depende de RAM y carga del equipo.
+Qwen reports progress while generating; only a complete, validated response may propose actions. On CPU systems, **Automatic · fast** avoids inference for specific local operations. `--force-model` verifies a real model call. CPU threads are configurable in Settings → Local AI (4 by default); speed also depends on RAM and system load.
 
-La versión **0.6.0** consulta la ayuda y los metadatos del Windows/shell instalado para revisar las propuestas de Qwen. No añade respuestas memorizadas a frases de prueba. Distingue CMD, Windows PowerShell 5.1 y PowerShell 7; conserva los operandos observados y corrige parámetros o rutas inválidos antes de ejecutar. La comprobación puede añadir una ronda de inferencia. El modelo de 0,5B sigue teniendo límites de comprensión: validar sintaxis no demuestra por sí solo que una orden cumpla cualquier petición. Las acciones locales concretas siguen evitando la inferencia.
+Chameleon uses native help and metadata from the installed Windows/shell to review Qwen proposals. It does not add memorized task/answer pairs for test phrases. It distinguishes CMD, Windows PowerShell 5.1 and PowerShell 7, preserves verified operands and corrects invalid parameters or paths before execution. Review can add another inference round. The 0.5B model still has comprehension limits: valid syntax alone does not prove that a command fulfills an arbitrary request. Specific local actions continue to avoid inference.
 
-## Instalar y ejecutar
+The application interface, help, diagnostics and app-authored responses are in **English**. English and Spanish requests remain supported. User filenames, literal file content and output from Windows or other programs retain their original language.
 
-1. Ejecuta `dist/ChameleonSetup.exe` (release autocontenida; no requiere Python).
-2. Pulsa **Instalar Chameleon**. Si falta Ollama, acepta su instalación oficial y la descarga del modelo. Se comprueba la firma de Ollama y su inferencia local.
-3. Si PowerShell bloquea perfiles, Setup explica la política y ofrece **RemoteSigned CurrentUser** con consentimiento explícito. No modifica políticas silenciosamente.
-4. Abre un **nuevo** CMD o PowerShell y utiliza `chameleon ai ...`.
-5. Abre **Chameleon Terminal**, **Chameleon Settings** o **Uninstall Chameleon** desde Inicio.
+## Install and run
 
-Instalación por usuario en `%LOCALAPPDATA%\ChameleonAI`. El PATH se amplía conservando sus entradas. No se usa Command Processor AutoRun. Ollama no se redistribuye dentro del instalador; el modelo tampoco.
+1. Run `dist/ChameleonSetup.exe` (self-contained release; Python is not required).
+2. Select **Install Chameleon**. If Ollama is missing, allow its official installation and model download. Setup verifies the Ollama signature and a local inference response.
+3. If PowerShell blocks profiles, Setup explains the policy and offers **RemoteSigned CurrentUser** with explicit consent. It never silently changes policies.
+4. Open a **new** CMD or PowerShell window and use `chameleon ai ...`.
+5. Open **Chameleon Terminal**, **Chameleon Settings** or **Uninstall Chameleon** from Start.
+
+Per-user installation: `%LOCALAPPDATA%\ChameleonAI`. Existing PATH entries are preserved. Command Processor AutoRun is not used. Ollama and model weights are not bundled inside the installer.
 
 ## Chameleon Terminal
 
-CMD por defecto; abre otra sesión con el selector de shell o **+**. Los programas interactivos reciben entrada directa. En el prompt principal puedes escribir `Downloads` o una petición natural. Los comandos reconocidos, aliases y scripts van directamente al PTY. **Entrada directa** permite forzar entrada directa cuando lo necesites. **Guía** muestra ejemplos; **Ajustes** personaliza fuente, cursor, IA y privacidad.
+CMD is the default. Open another session using the shell selector or **+**. Interactive programs receive direct input. At the main prompt, enter `Downloads` or a natural-language request. Recognized commands, aliases and scripts go directly to the PTY. **Direct input** forces native input when needed. **Guide** shows examples; **Settings** controls fonts, cursor, AI and privacy.
 
-Atajos: Ctrl+C interrumpe/cancela IA; Ctrl+Break cuando el proceso lo permite; Ctrl+Shift+C/V copia/pega; Ctrl+`+`/`-` cambia fuente; F11 pantalla completa. Las flechas, Tab e historial los gestiona el shell real. El pegado multilínea siempre se envía como entrada directa.
+Shortcuts: Ctrl+C interrupts/cancels AI; Ctrl+Break works where the process supports it; Ctrl+Shift+C/V copies/pastes; Ctrl+`+`/`-` changes font size; F11 toggles full screen. The real shell handles arrows, Tab and history. Multiline paste always uses direct input. For English requests starting with a native command name such as `copy` or `find`, use the explicit `chameleon ai` prefix to avoid ambiguity.
 
-## Comandos de `chameleon ai` (desde 0.7.0)
+## `chameleon ai` commands (since 0.7.0)
 
-En CMD, PowerShell o Chameleon Terminal puedes usar:
+Use these in CMD, PowerShell or Chameleon Terminal:
 
-| Comando | Resultado |
+| Command | Result |
 |---|---|
-| `chameleon ai --version` | Muestra la versión de Chameleon que estás ejecutando. |
-| `chameleon ai --model` | Muestra el modelo configurado y si la IA está activada, sin llamar al modelo. |
-| `chameleon ai --models` | Lista las etiquetas de los modelos descargados en Ollama local y marca el actual. |
-| `chameleon ai --changemodel` | Abre el selector de modelos locales descargados. Usa ↑/↓ y Enter para elegir; Esc o Ctrl+C cancelan. |
-| `chameleon ai --changemodel qwen2.5:0.5b` | Guarda directamente esa etiqueta, si está descargada y se verifica como local. |
-| `chameleon ai --help` | Muestra todos los comandos y opciones de uso. |
-| `chameleon ai --try <petición>` | Enseña el comando concreto para tu shell y ofrece **Cancelar** o **Ejecutar** en la sesión actual. |
-| `chameleon ai --dry-run <petición>` | Muestra la propuesta sin ejecutarla ni abrir una confirmación de ejecución. |
-| `chameleon ai --show <petición>` | Muestra el comando generado y continúa con el comportamiento habitual de permisos y ejecución. |
-| `chameleon ai --force-model <petición>` | Fuerza una consulta al modelo, incluso para peticiones que normalmente resolverían las reglas locales. |
-| `chameleon ai --debug <petición>` | Muestra el origen y diagnóstico de la propuesta; conserva el comportamiento habitual de ejecución. |
+| `chameleon ai --version` | Show the Chameleon version you are running. |
+| `chameleon ai --model` | Show the configured model and whether AI is enabled, without calling the model. |
+| `chameleon ai --models` | List downloaded local Ollama model tags and mark the current selection. |
+| `chameleon ai --changemodel` | Open the downloaded-model selector. Use ↑/↓ and Enter to choose; Esc or Ctrl+C cancels. |
+| `chameleon ai --changemodel qwen2.5:0.5b` | Save this tag directly if it is downloaded and verified as local. |
+| `chameleon ai --help` | Show all public commands and options. |
+| `chameleon ai --try <request>` | Show the actual command for your shell and offer **Cancel** or **Run** in the current session. |
+| `chameleon ai --dry-run <request>` | Show the proposal without executing it or offering execution. |
+| `chameleon ai --show <request>` | Show the generated command, then follow normal permissions and execution behavior. |
+| `chameleon ai --force-model <request>` | Force a model call, even for requests normally handled by local rules. |
+| `chameleon ai --debug <request>` | Show proposal source and diagnostics; normal execution behavior still applies. |
 
 ```powershell
-chameleon ai --try ve a Desktop
-chameleon ai --force-model --try lista los archivos
+chameleon ai --try go to Desktop
+chameleon ai --force-model --try list files
 chameleon ai --changemodel
 ```
 
-`--try` muestra la carpeta, el shell, el origen real de la propuesta y el comando que se va a ejecutar. La selección inicial es **Cancelar**: Enter por sí solo no ejecuta. Para aceptar, muévete a **Ejecutar** y pulsa Enter. Esta confirmación se mantiene incluso con **Acceso total**, y una acción bloqueada por tus permisos no puede aprobarse desde aquí. Sin consola interactiva, la propuesta se muestra pero no se ejecuta. La ruta usa las reglas locales o el modelo según tu configuración; combina `--force-model --try` para exigir inferencia real. No combines `--try` con `--dry-run`.
+`--try` shows the folder, shell, actual proposal source and command to execute. **Cancel** is selected initially: Enter alone does not run anything. Move to **Run** and press Enter to approve. This confirmation also applies with **Full access**; an action blocked by your permissions cannot be approved here. Without an interactive console, the proposal is displayed but never executed. Routing follows your local-rule/model configuration; combine `--force-model --try` to require real inference. Do not combine `--try` and `--dry-run`.
 
-El cambio de modelo se guarda para las siguientes llamadas a `chameleon ai` y las nuevas ventanas de Chameleon Terminal. La lista se consulta en Ollama local; si no responde, se informa del problema sin cambiar la configuración. Los modelos que falten se preparan desde Setup o Ajustes → IA local; el selector no instala ni descarga software. Por compatibilidad, `--model` **seguido de una petición** conserva su función anterior de forzar el modelo; usado solo muestra la selección actual.
+Model changes are saved for subsequent `chameleon ai` calls and new Chameleon Terminal windows. The list comes from local Ollama; if it does not respond, Chameleon reports the problem without changing the selection. Prepare missing models in Setup or Settings → Local AI; the selector does not install or download software. For compatibility, `--model` **followed by a request** retains its earlier force-model behavior; used alone, it shows the current selection.
 
-## IA, privacidad y seguridad
+## AI, privacy and safety
 
-Abre **IA y permisos** para ver los controles de la sesión. El panel muestra la respuesta, su origen, modelo, llamadas, tokens y duración reales. **Automático · rápido** usa reglas concretas y Qwen para las demás peticiones. **Qwen · siempre**, `--model` en CLI o la preferencia en Ajustes fuerzan el modelo para las peticiones naturales; los comandos normales conservan su entrada directa.
+Open **AI and permissions** to see session controls. The panel shows the response, source, model, calls, tokens and actual duration. **Automatic · fast** uses specific local rules and Qwen for other requests. **Qwen · always**, CLI `--force-model`, or the Settings preference forces the model for natural-language requests; normal commands retain direct input.
 
-En 0.6.0 la respuesta predeterminada es **sólo el comando**, sin JSON, saludos, Markdown ni explicaciones. Se favorece el comando nativo más directo. Se valida el formato, se comprueban cmdlets dudosos y las fuentes simples de lectura/borrado; hay correcciones acotadas si el modelo inventa un comando o una ruta. Los datos se leen al ejecutar el comando, sin enviar su contenido al modelo para esta modalidad. Puedes desactivar esta opción en Ajustes para conservar el planificador estructurado con herramientas de inspección.
+The default response is **the command only**, without JSON, greetings, Markdown or explanations. Chameleon favors the shortest direct native command. It validates formatting, checks suspicious cmdlets and simple read/delete sources, and makes bounded corrections when the model invents a command or path. In this mode, data is read when the command executes, without sending file contents to the model. Disable this setting to use the structured planner and inspection tools.
 
-Elige **qwen3:4b-instruct** (~2,5 GB) o **qwen2.5:0.5b** (~398 MB) en Setup, Ajustes o el panel del terminal. En Ajustes puedes introducir otra etiqueta local y pulsar **Descargar si falta y probar modelo**. El modelo pequeño consume menos recursos y puede cometer más errores; la selección no cambia silenciosamente a otro modelo.
+Choose **qwen3:4b-instruct** (~2.5 GB) or **qwen2.5:0.5b** (~398 MB) in Setup, Settings or the terminal panel. In Settings, enter another local tag and select **Download if missing and test model**. The smaller model uses fewer resources and may make more mistakes; Chameleon never silently substitutes another model.
 
-El nombre sin extensión se compara con archivos reales de la carpeta indicada. Si hay un solo `Prueba.txt`, «borra Prueba» lo propone; con varios candidatos pide la ruta exacta. Reconoce `Downloads`, `Descargas` y sus subrutas, incluidas carpetas redirigidas de Windows.
+Extensionless names are matched against actual files in the requested folder. If there is exactly one `Sample.txt`, “delete Sample” proposes it; multiple candidates require an exact path. `Downloads`, its Spanish alias `Descargas`, and subfolders resolve through actual Windows known folders, including redirected locations.
 
-Solo se contacta `http://127.0.0.1:11434`, sin proxies ni fallback cloud. Las reglas claras funcionan aunque Ollama esté apagado. xterm.js y todos sus recursos vienen incluidos; después de descargar Ollama y Qwen no se necesita Internet.
+Inference contacts only `http://127.0.0.1:11434`, without proxies or cloud fallback. Clear local rules work even when Ollama is offline. xterm.js and all resources are bundled; after downloading Ollama and the model, Internet access is unnecessary for local inference.
 
-No hay telemetría. El historial permanente está **desactivado**. El contexto externo se limita a seis elementos redactados y caduca a los 30 minutos; identifica PID y fecha de creación para evitar reutilización de PID. No pretende observar comandos normales en terminales externas. La GUI conserva solo una cola limitada de salida en memoria. La redacción de secretos es básica, no infalible.
+There is no telemetry. Permanent history is **off** by default. External session context is limited to six redacted items, expires after 30 minutes and checks PID plus process creation time to prevent PID reuse. It does not monitor ordinary commands in external terminals. The GUI keeps only a bounded output tail in memory. Secret redaction is basic, not infallible.
 
-El acceso se elige en **Ajustes → Acceso del modelo**: Solo lectura, Equilibrado, Desarrollador, Personalizado o Acceso total. Personalizado permite elegir lectura, escritura, borrado, comandos, scripts, red, sistema y confirmaciones. Equilibrado es el predeterminado; Desarrollador permite ejecución arbitraria con confirmación. **Acceso total elimina los bloqueos y confirmaciones de Chameleon**, con los permisos que ya tenga tu usuario de Windows. No concede privilegios administrativos ni evita UAC/ACL. Estos controles son una política de la aplicación, no un sandbox del sistema; los scripts arbitrarios requieren todos los permisos de efectos porque pueden realizar cualquiera de esas operaciones. Los comandos escritos directamente siguen bajo tu control.
+Choose access in **Settings → Model access**: Read only, Balanced, Developer, Custom or Full access. Custom offers separate read, write, delete, command, script, network, system and confirmation controls. Balanced is the default; Developer allows arbitrary execution with confirmation. **Full access removes Chameleon blocks and confirmations**, using your existing Windows user permissions. It does not elevate privileges or bypass UAC/ACLs. These controls are application policy, not an OS sandbox; arbitrary scripts require all effect permissions because they can perform any of those operations. Manually typed commands remain under your control. Explicit `--try` requests always require approval.
 
-La interfaz 0.6.0 usa verdes bosque, musgo y salvia, superficies mate y vidrio reservado para las barras de acciones. El panel de IA aparece bajo demanda sin redimensionar el terminal. Setup agrupa las opciones avanzadas y los detalles en desplegables. Los botones adaptan código MIT de [Codrops MagneticButtons](https://github.com/codrops/MagneticButtons) y [Motion Primitives Spotlight](https://github.com/ibelick/motion-primitives), con movimiento magnético, luz radial y transiciones reversibles; se respeta el movimiento reducido de Windows y los temporizadores se detienen en reposo. Fuentes y revisiones exactas en `src/chameleon/assets/licenses/ui-motion/PROVENANCE.md`.
+The interface uses forest, moss and sage greens, matte surfaces and glass reserved for action bars. The AI panel opens on demand without resizing the terminal. Setup groups advanced options and details into expandable controls. Buttons adapt MIT-licensed [Codrops MagneticButtons](https://github.com/codrops/MagneticButtons) and [Motion Primitives Spotlight](https://github.com/ibelick/motion-primitives), with magnetic motion, radial lighting and reversible transitions. Windows reduced-motion preferences are respected and timers stop at rest. Original sources and pinned revisions are in `src/chameleon/assets/licenses/ui-motion/PROVENANCE.md`.
 
-La interfaz Liquid Glass reutiliza el motor óptico y compositor MIT de [PyGlass](https://github.com/neomosh8/pyglass), adaptados a PySide6. El fondo procede únicamente de la propia aplicación. El vidrio se almacena en caché y se limita su resolución para reducir CPU/RAM. La licencia y la revisión exacta están incluidas en la distribución.
+Liquid Glass reuses the MIT optical renderer/compositor from [PyGlass](https://github.com/neomosh8/pyglass), adapted to PySide6. Backdrop pixels come exclusively from the application. Glass rendering is cached and resolution-limited to reduce CPU/RAM. Licenses and exact revisions are bundled.
 
-## Construir desde código
+## Build from source
 
-Requisitos de desarrollo: Python **3.13 x64**, Node.js 22+ y Windows. Estos requisitos no son necesarios en el equipo de destino.
+Development requirements: Python **3.13 x64**, Node.js 22+ and Windows. Destination computers do not need these development tools.
 
 ```powershell
 .\scripts\build.ps1
 ```
 
-El script instala dependencias fijadas, comprueba lint, tipos y tests, copia recursos npm locales, genera iconos y construye:
+The script installs pinned dependencies, checks lint/types/tests, copies local npm resources, generates icons and builds:
 
 ```text
-dist/ChameleonSetup.exe                 Instalador autocontenido
-dist/Chameleon/ChameleonCore.exe        CLI y protocolo de shell
+dist/ChameleonSetup.exe                 Self-contained installer
+dist/Chameleon/ChameleonCore.exe        CLI and shell protocol
 dist/Chameleon/ChameleonTerminal.exe    GUI
 dist/Chameleon/ChameleonSetup.exe       Setup / Settings / Uninstall
-dist/Chameleon/_internal/               Runtime compartido (conservar completo)
-dist/ChameleonAI-0.6.0-windows-x64.zip   Paquete portable con Setup integrado
-dist/ChameleonAI-0.6.0-source.zip        Código fuente listo para GitHub
+dist/Chameleon/_internal/               Shared runtime (keep the complete folder)
+dist/ChameleonAI-0.7.1-windows-x64.zip   Portable package with integrated Setup
+dist/ChameleonAI-0.7.1-source.zip        Source ready for GitHub
 dist/SHA256SUMS.json                    Checksums
 ```
 
-Desde fuente, después de preparar `.venv`: `scripts/run.ps1 terminal`, `scripts/run.ps1 setup`, `scripts/run.ps1 settings`. `python -m chameleon ai --dry-run ...` permite revisar planes; solo el wrapper/módulo puede modificar el shell padre.
+After preparing `.venv`, run from source with `scripts/run.ps1 terminal`, `scripts/run.ps1 setup` or `scripts/run.ps1 settings`. `python -m chameleon ai --dry-run ...` previews plans; only the installed wrapper/module can change parent-shell state.

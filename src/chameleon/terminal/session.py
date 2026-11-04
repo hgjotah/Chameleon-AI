@@ -205,15 +205,15 @@ class TerminalSession(QObject):
                 if not self.closed and not self.cancel_requested.is_set():
                     self.plan_ready.emit(plan, assessment)
                 elif not self.closed:
-                    self.failed.emit("Cancelado.")
+                    self.failed.emit("Cancelled.")
             except asyncio.CancelledError:
-                self.failed.emit("Cancelado.")
+                self.failed.emit("Cancelled.")
             except Exception as exc:
                 logging.getLogger("chameleon").info("Inference failed: %s", type(exc).__name__)
                 self.failed.emit(
                     str(exc)
                     if isinstance(exc, (ValueError, OSError, RuntimeError))
-                    else "Error de IA local. Ejecuta chameleon doctor."
+                    else "Local AI error. Run chameleon doctor."
                 )
             finally:
                 self._loop = None
@@ -282,7 +282,7 @@ class TerminalSession(QObject):
         if self.pending_command is not None and not self.closed:
             self.pending_command = None
             self.failed.emit(
-                "El shell no respondió al cambio de línea. No se ejecutó la acción. Pulsa Ctrl+C y vuelve a intentarlo."
+                "The shell did not respond to the line change. The action was not executed. Press Ctrl+C and try again."
             )
 
     def close(self) -> None:

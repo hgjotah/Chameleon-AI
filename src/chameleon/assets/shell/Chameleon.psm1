@@ -26,7 +26,7 @@ function global:chameleon {
                     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($action | ConvertTo-Json -Compress)))
                     if ($plan.policy_token) { & $core apply --encoded $encoded --policy $plan.policy_token }
                     else { & $core apply --encoded $encoded }
-                    if ($LASTEXITCODE -ne 0) { throw 'No se pudo completar la acción de archivo; las acciones siguientes se cancelaron.' }
+                    if ($LASTEXITCODE -ne 0) { throw 'Could not complete the file action; subsequent actions were cancelled.' }
                 }
                 'cd' { Set-Location -LiteralPath $action.path -ErrorAction Stop }
                 'clear' { Clear-Host }
@@ -34,7 +34,7 @@ function global:chameleon {
                     if ($action.min_size_bytes -gt 0 -or $action.modified_after -or $action.file_type -ne 'any') {
                         $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($action | ConvertTo-Json -Compress)))
                         & $core query --encoded $encoded
-                        if ($LASTEXITCODE -ne 0) { throw 'Consulta fallida' }
+                        if ($LASTEXITCODE -ne 0) { throw 'Query failed' }
                     } else {
                         Get-ChildItem -LiteralPath $action.path -Filter $action.pattern -Recurse:($action.recursive -or $action.kind -eq 'find') -ErrorAction Stop
                     }

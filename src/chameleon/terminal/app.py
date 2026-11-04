@@ -1,5 +1,6 @@
 import sys
 
+from PySide6.QtCore import QLocale
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -9,6 +10,7 @@ from chameleon.ui.theme import STYLE
 
 
 def create_application(argv: list[str] | None = None) -> QApplication:
+    QLocale.setDefault(QLocale("en_US"))
     app = QApplication.instance()
     if not isinstance(app, QApplication):
         app = QApplication(argv or sys.argv)

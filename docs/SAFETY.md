@@ -25,6 +25,8 @@ Full access does not elevate the process, bypass Windows ACLs/UAC, or make an
 unavailable executable exist. Format/protocol validation still rejects malformed
 model output. Full mode can perform destructive operations with the user's rights.
 Developer and Full profiles intentionally override the conservative allowlist.
+Explicit `--try` previews always require approval, with Cancel selected initially,
+even under Full access.
 
 Scripts are arbitrary programs: the app cannot prove their filesystem/network
 effects from a command string. Custom script access therefore requires all effect

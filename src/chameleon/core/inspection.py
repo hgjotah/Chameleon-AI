@@ -14,13 +14,13 @@ from chameleon.core.schemas import Action
 def inspect_action(action: Action, context: Context) -> dict:
     target = resolve_path(action.path, context) if action.path else Path(context.cwd).resolve()
     if action.kind not in ("list", "find", "read", "processes"):
-        raise ValueError("La inspección no admite modificaciones ni comandos.")
+        raise ValueError("Inspection does not allow changes or commands.")
     result: dict = {"kind": action.kind, "path": str(target), "observed_at": time.time()}
     try:
         if action.kind == "read":
             target, matches = resolve_reference(action.path, context)
             if matches:
-                raise ValueError("Nombre ambiguo; indica la extensión exacta: " + ", ".join(p.name for p in matches[:20]))
+                raise ValueError("Ambiguous name; specify the exact extension: " + ", ".join(p.name for p in matches[:20]))
             result["path"] = str(target)
         allowed = [
             Path(context.cwd).resolve(),
@@ -30,7 +30,7 @@ def inspect_action(action: Action, context: Context) -> dict:
             target == p or target.is_relative_to(p) for p in allowed
         ):
             raise ValueError(
-                "La inspección está limitada a la carpeta actual y tus carpetas conocidas. Indica la ubicación y navega a ella primero."
+                "Inspection is limited to the current folder and your known folders. Specify the location and navigate there first."
             )
         if action.kind == "processes":
             result["processes"] = [
@@ -40,19 +40,19 @@ def inspect_action(action: Action, context: Context) -> dict:
         elif action.kind == "read":
             # Avoid pipes/devices and bound memory even if a file grows while read.
             if not target.is_file():
-                raise ValueError("No es un archivo normal existente.")
+                raise ValueError("This is not an existing regular file.")
             with target.open("rb") as stream:
                 content = stream.read(12001)
             encoding = "utf-16" if content.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
             if encoding != "utf-16" and b"\0" in content:
-                raise ValueError("Archivo binario; no se interpreta como texto.")
+                raise ValueError("Binary file; it cannot be interpreted as text.")
             result["content"] = redact(content[:12000].decode(encoding, errors="replace"))
             result["encoding"] = encoding
             result["truncated"] = len(content) > 12000
             result["size_bytes"] = target.stat().st_size
         else:
             if not target.is_dir():
-                raise ValueError("La carpeta consultada no existe.")
+                raise ValueError("The requested folder does not exist.")
             import fnmatch
 
             rows = []

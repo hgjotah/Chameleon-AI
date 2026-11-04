@@ -56,7 +56,7 @@ class RiskEngine:
         if self.policy.mode in ("full", "developer"):
             return Assessment(
                 Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
-                "Acceso " + self.policy.mode + " · permisos del usuario de Windows.",
+                "Access " + self.policy.mode + " · Windows user permissions.",
             )
         if action.kind in ("create", "mkdir", "copy", "move"):
             from chameleon.core.files import validate_target
@@ -69,35 +69,35 @@ class RiskEngine:
             if self.protected(str(target)) or action.kind == "move" and self.protected(action.path):
                 return Assessment(
                     Risk.BLOCKED,
-                    "Elige una carpeta de usuario; no se modifican directorios protegidos del sistema.",
+                    "Choose a user folder; protected system directories will not be changed.",
                 )
             if target.exists():
                 return Assessment(
-                    Risk.BLOCKED, f"Ya existe {target}. No se sobrescribió nada; elige otro nombre."
+                    Risk.BLOCKED, f"Ya existe {target}. Nothing was overwritten; choose another name."
                 )
             if action.kind != "mkdir" and not target.parent.is_dir():
                 return Assessment(
                     Risk.BLOCKED,
-                    f"La carpeta de destino no existe: {target.parent}. Crea primero esa carpeta.",
+                    f"The destination folder does not exist: {target.parent}. Create that folder first.",
                 )
             if action.kind in ("copy", "move") and not (cwd / action.path).is_file():
-                return Assessment(Risk.BLOCKED, "El archivo de origen no existe.")
+                return Assessment(Risk.BLOCKED, "The source file does not exist.")
             return Assessment(
                 Risk.CONFIRM,
-                "Se creará una carpeta."
+                "A folder will be created."
                 if action.kind == "mkdir"
-                else "Se modifican archivos. Revisa el destino y el contenido.",
+                else "Files will be changed. Review the destination and content.",
             )
         if action.kind == "delete":
             resolved = str((cwd / action.path).resolve())
             if self.protected(resolved) or self.protected(action.path):
                 return Assessment(
-                    Risk.BLOCKED, "No se permite destruir la raíz ni directorios del sistema."
+                    Risk.BLOCKED, "Deleting the root or system directories is not allowed."
                 )
-            return Assessment(Risk.CONFIRM, "Los archivos se eliminarán de forma permanente.")
+            return Assessment(Risk.CONFIRM, "Files will be permanently deleted.")
         if action.kind == "env":
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", action.name):
-                return Assessment(Risk.BLOCKED, "Nombre de variable inválido.")
+                return Assessment(Risk.BLOCKED, "Invalid variable name.")
             if action.name.casefold() in {
                 "comspec",
                 "systemroot",
@@ -106,19 +106,19 @@ class RiskEngine:
                 "path",
                 "prompt",
             }:
-                return Assessment(Risk.CONFIRM, "Cambiará una variable importante de esta sesión.")
-            return Assessment(Risk.CONFIRM, "Cambiará el entorno de esta sesión.")
+                return Assessment(Risk.CONFIRM, "This will change an important variable in the current session.")
+            return Assessment(Risk.CONFIRM, "This will change the current session environment.")
         if action.kind != "command":
             if action.kind in ("cd", "read", "delete") and not (cwd / action.path).exists():
-                return Assessment(Risk.BLOCKED, "La ruta no existe; no se inventan destinos.")
+                return Assessment(Risk.BLOCKED, "The path does not exist; destinations are never invented.")
             if action.kind in ("cd", "list", "find") and not (cwd / action.path).is_dir():
-                return Assessment(Risk.BLOCKED, "La ruta debe ser una carpeta existente.")
+                return Assessment(Risk.BLOCKED, "The path must be an existing folder.")
             if action.kind == "read" and not (cwd / action.path).is_file():
                 return Assessment(
-                    Risk.BLOCKED, "Selecciona un archivo existente para leer su contenido."
+                    Risk.BLOCKED, "Select an existing file to read its contents."
                 )
             return Assessment(
-                Risk.CONFIRM if self.strict else Risk.SAFE, "Operación de consulta o navegación."
+                Risk.CONFIRM if self.strict else Risk.SAFE, "Query or navigation operation."
             )
         return self.command(action.command, cwd)
 
@@ -131,12 +131,12 @@ class RiskEngine:
         if session_change(command):
             return Assessment(
                 Risk.CONFIRM if self.strict else Risk.SAFE,
-                "Cambiará sólo la apariencia de esta sesión.",
+                "This will only change the current session appearance.",
             )
         if session_read(command):
             return Assessment(
                 Risk.CONFIRM if self.strict else Risk.SAFE,
-                "Consulta de una propiedad de la sesión.",
+                "Query a session property.",
             )
         if (
             self.policy.mode in ("full", "developer")
@@ -145,7 +145,7 @@ class RiskEngine:
         ):
             return Assessment(
                 Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
-                "Comando permitido por tu perfil de acceso.",
+                "Command allowed by your access profile.",
             )
         if self.policy.mode == "custom":
             if cwd is not None and re.search(
@@ -159,11 +159,11 @@ class RiskEngine:
                         continue
                     if self.protected(str((cwd / value).resolve())):
                         return Assessment(
-                            Risk.BLOCKED, "Destino del sistema desactivado en este perfil."
+                            Risk.BLOCKED, "System targets are disabled in this profile."
                         )
             return Assessment(
                 Risk.CONFIRM if self.policy.confirms() else Risk.SAFE,
-                "Permisos personalizados: revisa el comando.",
+                "Custom permissions: review the command.",
             )
         from chameleon.safety.permissions import READ_COMMANDS
 
@@ -174,14 +174,14 @@ class RiskEngine:
             and all(piece.strip().split(" ", 1)[0].casefold() in READ_COMMANDS for piece in pieces)
         ):
             return Assessment(
-                Risk.CONFIRM if self.strict else Risk.SAFE, "Consulta de sólo lectura."
+                Risk.CONFIRM if self.strict else Risk.SAFE, "Read-only query."
             )
         lowered = command.casefold()
         first_match = re.match(r'\s*["\x27]?([^\s"\x27]+)', lowered)
         first = ntpath.basename(first_match.group(1)).removesuffix(".exe") if first_match else ""
         if first_match and re.search(r"[\\/:]", first_match.group(1)):
             return Assessment(
-                Risk.BLOCKED, "La IA no puede ejecutar programas por una ruta arbitraria."
+                Risk.BLOCKED, "AI cannot run programs from an arbitrary path."
             )
         # Reject opaque execution, nested shells, interpolation that hides destructive targets,
         # and storage tools. These cannot be independently reasoned about from source strings.
@@ -189,14 +189,14 @@ class RiskEngine:
         if re.search(opaque, lowered) or re.search(r"-(?:enc|encodedcommand)\b", lowered):
             return Assessment(
                 Risk.BLOCKED,
-                "La IA no puede ejecutar código opaco, shells anidados, descargas ni herramientas de destrucción de discos.",
+                "AI cannot run opaque code, nested shells, downloads or disk destruction tools.",
             )
         destructive = re.search(r"\b(?:del|erase|rd|rmdir|remove-item|rm|deltree)\b", lowered)
         if destructive:
             if re.search(
                 r"[%!$*?]|\b(?:windows|system32|syswow64)\b|[a-z]:[\\/](?:[\s\x27\"]|$)", lowered
             ):
-                return Assessment(Risk.BLOCKED, "Destino destructivo masivo, dinámico o protegido.")
+                return Assessment(Risk.BLOCKED, "Bulk, dynamic or protected destructive target.")
             if cwd is not None:
                 arguments = re.findall(
                     r'"[^"]*"|\x27[^\x27]*\x27|\S+', command[destructive.end() :]
@@ -208,21 +208,21 @@ class RiskEngine:
                     if self.protected(str((cwd / value).resolve())):
                         return Assessment(
                             Risk.BLOCKED,
-                            "El destino relativo resuelve a un directorio protegido del sistema.",
+                            "The relative target resolves to a protected system directory.",
                         )
-            return Assessment(Risk.CONFIRM, "El comando puede eliminar archivos.")
+            return Assessment(Risk.CONFIRM, "The command may delete files.")
         if re.search(
             r"\b(?:move|ren|rename|reg\s+delete|remove-itemproperty)\b", lowered
         ) and re.search(
             r"\b(?:windows|system32|hklm|hkey_local_machine)\b|[a-z]:[\\/](?:[\s\x27\"]|$)", lowered
         ):
             return Assessment(
-                Risk.BLOCKED, "Modificación masiva de un destino protegido del sistema."
+                Risk.BLOCKED, "Bulk changes to a protected system target."
             )
         # Metacharacters, expansions, redirection and compound syntax never enter SAFE.
         if re.search(r"[&|<>^%!`;\n\r$()]", command):
             return Assessment(
-                Risk.CONFIRM, "Sintaxis compuesta: revisa el comando completo antes de ejecutarlo."
+                Risk.CONFIRM, "Compound syntax: review the entire command before running it."
             )
         safe = {
             "dir",
@@ -248,7 +248,7 @@ class RiskEngine:
             and re.fullmatch(r"git\s+(?:status|diff|log|show)(?:\s+--?[\w=-]+)*", lowered)
             and not re.search(r"--(?:output|ext-diff|textconv|exec-path|paginate)|\s-c\b", lowered)
         ):
-            return Assessment(Risk.CONFIRM if self.strict else Risk.SAFE, "Consulta o navegación.")
+            return Assessment(Risk.CONFIRM if self.strict else Risk.SAFE, "Query or navigation.")
         admin = bool(
             re.search(
                 r"\b(?:sc|reg|netsh|bcdedit|stop-service|set-service|set-executionpolicy|restart-computer|stop-computer|shutdown|takeown|icacls)\b",
@@ -286,17 +286,17 @@ class RiskEngine:
         }:
             return Assessment(
                 Risk.BLOCKED,
-                "Ejecutable no admitido para acciones generadas por IA. Escríbelo directamente si deseas ejecutarlo.",
+                "Executable not supported for AI-generated actions. Type it directly if you want to run it.",
             )
         return Assessment(
-            Risk.CONFIRM, "Este comando modifica el sistema o archivos. Revisa sus efectos.", admin
+            Risk.CONFIRM, "This command changes the system or files. Review its effects.", admin
         )
 
     def assess(self, plan: Plan, cwd: Path) -> Assessment:
         if self.policy.mode in ("full", "developer"):
             return Assessment(
                 Risk.CONFIRM if plan.actions and self.policy.confirms() else Risk.SAFE,
-                "Perfil " + self.policy.mode + " · permisos del usuario de Windows.",
+                "Perfil " + self.policy.mode + " · Windows user permissions.",
             )
         decisions = []
         current = cwd
@@ -309,7 +309,7 @@ class RiskEngine:
                 decisions.append(
                     Assessment(
                         Risk.BLOCKED,
-                        "Los planes con varias acciones deben usar navegación cd estructurada.",
+                        "Plans with multiple actions must use structured cd navigation.",
                     )
                 )
             else:
@@ -317,7 +317,7 @@ class RiskEngine:
             if action.kind == "cd":
                 current = (current / action.path).resolve()
         if not decisions:
-            return Assessment(Risk.SAFE, "Sin ejecución.")
+            return Assessment(Risk.SAFE, "No execution.")
         worst = max(decisions, key=lambda d: d.level)
         return Assessment(
             Risk.SAFE

@@ -59,7 +59,7 @@ def test_model_list_filters_remote_invalid_and_duplicates():
 def test_model_list_rejects_malformed_response(payload):
     import asyncio
 
-    with pytest.raises(ProviderError, match="No se cambió"):
+    with pytest.raises(ProviderError, match="The model was not changed"):
         asyncio.run(cli_models.installed_models(httpx.MockTransport(lambda _: httpx.Response(200, json=payload))))
 
 
@@ -80,7 +80,7 @@ def test_change_model_persists_only_model(cli_home, monkeypatch, interactive, ca
     mock_model_list(monkeypatch)
 
     def pick(title, choices, selected, details):
-        assert selected == 0 and "ACTUAL" in choices[0].detail
+        assert selected == 0 and "CURRENT" in choices[0].detail
         # A concurrent settings edit must not be reverted by selection.
         config, _ = load_config(cli_home)
         config.terminal.font_size = 22
@@ -138,7 +138,7 @@ def test_try_requires_explicit_yes_before_emitting(cli_home, monkeypatch, capsys
     monkeypatch.setattr(cli, "ask", lambda *_: pytest.fail("Double confirmation"))
 
     def choose(title, options, selected, details):
-        assert selected == 0 and options[0].label == "Cancelar"
+        assert selected == 0 and options[0].label == "Cancel"
         assert "Set-Location -LiteralPath" in details and str(cli_home) in details
         assert not list((cli_home / "runtime/actions").glob("*.cmd"))
         return answer
@@ -157,7 +157,7 @@ def test_try_noninteractive_full_access_cannot_emit(cli_home, monkeypatch, capsy
     fake_plan(monkeypatch, cli_home)
     assert cli.main(["--emit", "cmd", "ai", "--try", "ve a una carpeta"]) == 1
     captured = capsys.readouterr()
-    assert "cd /d" in captured.err and "Sin consola interactiva" in captured.err
+    assert "cd /d" in captured.err and "No interactive console" in captured.err
     assert not captured.out and not list((cli_home / "runtime/actions").glob("*.cmd"))
 
 
@@ -208,6 +208,6 @@ def test_selector_keyboard_paging_and_cancel(monkeypatch, keys, expected):
         yield FakeConsole()
 
     monkeypatch.setattr(cli_ui, "open_console", console)
-    assert cli_ui.select("Modelo", [cli_ui.Choice(f"Modelo {i}") for i in range(12)], details="echo \x1b[2Jtexto") == expected
-    assert "Enter elegir" in "".join(output)
+    assert cli_ui.select("Model", [cli_ui.Choice(f"Modelo {i}") for i in range(12)], details="echo \x1b[2Jtexto") == expected
+    assert "Enter select" in "".join(output)
     assert "\\x1b[2Jtexto" in "".join(output) and "\x1b[2Jtexto" not in "".join(output)

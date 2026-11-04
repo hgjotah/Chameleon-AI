@@ -40,23 +40,23 @@ class SetupService:
 
     def run(self, options: InstallOptions) -> str:
         if os.name != "nt" or sys.getwindowsversion().build < 17763:
-            raise OSError("Se requiere Windows 10 1809+ / Windows 11 x64")
-        self.progress("✓ Windows compatibility · runtime incluido")
+            raise OSError("Windows 10 1809+ / Windows 11 x64 is required")
+        self.progress("✓ Windows compatibility · bundled runtime")
         install(self.root, self.payload, desktop=options.desktop, progress=self.progress)
         self.progress("✓ CMD · PowerShell · PATH · shortcuts · Terminal")
         manifest = read_manifest(self.root)
         try:
             self.configure_policies(options.allow_policy, manifest)
         except (OSError, subprocess.TimeoutExpired) as exc:
-            self.progress("⚠ Terminal instalado; no se pudieron verificar las políticas de PowerShell: " + str(exc))
+            self.progress("⚠ Terminal installed; could not verify PowerShell policies: " + str(exc))
         try:
             ai_ready = self.configure_ai(options, manifest)
         except (ProviderError, OSError, TimeoutError, subprocess.TimeoutExpired, httpx.HTTPError) as exc:
-            self.progress("⚠ Terminal instalado. IA pendiente: " + str(exc))
-            return "Terminal instalado correctamente. La IA necesita atención; consulta el detalle y pulsa Reparar para reintentar. Las acciones locales ya funcionan."
+            self.progress("⚠ Terminal installed. AI pending: " + str(exc))
+            return "Terminal installed successfully. AI needs attention; check the details and select Repair to retry. Local actions already work."
         if not ai_ready:
-            return "Terminal instalado correctamente. La IA necesita atención: Ollama o el modelo no están disponibles. Pulsa Reparar cuando estén listos. Las acciones locales ya funcionan."
-        return "Instalación lista. Abre una nueva terminal para aplicar PATH y perfiles."
+            return "Terminal installed successfully. AI needs attention: Ollama or the model is unavailable. Select Repair when they are ready. Local actions already work."
+        return "Installation ready. Open a new terminal to apply PATH and profiles."
 
     def configure_policies(self, allowed: bool, manifest: dict[str, Any]) -> None:
         for shell, _ in profile_paths():
@@ -65,14 +65,14 @@ class SetupService:
                 [executable, "-NoProfile", "-Command", "Get-ExecutionPolicy"], timeout=15
             )
             if result.returncode or not result.stdout.strip():
-                self.progress(f"⚠ {shell}: no se pudo consultar la política. El terminal está instalado; comprueba el diagnóstico.")
+                self.progress(f"⚠ {shell}: could not query the policy. The terminal is installed; check diagnostics.")
                 continue
             effective = result.stdout.strip()
             if effective not in ("Restricted", "AllSigned"):
                 continue
             if not allowed:
                 self.progress(
-                    f"⚠ {shell}: {effective} impide perfiles. No se cambió la política. Consulta INSTALLATION.md."
+                    f"⚠ {shell}: {effective} prevents profiles. The policy was not changed. See INSTALLATION.md."
                 )
                 continue
             before = hidden_run(
@@ -89,7 +89,7 @@ class SetupService:
                 timeout=15,
             )
             if changed.returncode or changed.stdout.strip() != "RemoteSigned":
-                self.progress("⚠ Group Policy impide la integración. Consulta INSTALLATION.md.")
+                self.progress("⚠ Group Policy prevents integration. See INSTALLATION.md.")
             else:
                 manifest.setdefault("policy_before", {}).setdefault(shell, before)
                 write_manifest(self.root, manifest)
@@ -97,35 +97,35 @@ class SetupService:
     def configure_ai(self, options: InstallOptions, manifest: dict[str, Any]) -> bool:
         config, _ = load_config(self.root)
         provider = OllamaProvider(config.ai)
-        self.progress("Comprobando Ollama instalado y modelo " + config.ai.model)
+        self.progress("Checking installed Ollama and model " + config.ai.model)
         online, present = asyncio.run(provider.status())
         if not online:
             if not ollama_executable() and options.allow_ollama:
                 install_ollama(self.progress)
                 if not ollama_executable():
-                    raise OSError("El instalador terminó pero no se encuentra ollama.exe. No se declara la IA instalada.")
+                    raise OSError("The installer finished but ollama.exe was not found. AI is not reported as installed.")
                 manifest["installed_ollama"] = True
                 write_manifest(self.root, manifest)
             if ollama_executable():
                 asyncio.run(ensure_server(self.progress))
             else:
                 self.progress(
-                    "IA pendiente: instala Ollama desde https://ollama.com/download/windows; luego Repair."
+                    "AI pending: install Ollama from https://ollama.com/download/windows, then use Repair."
                 )
         online, present = asyncio.run(provider.status())
         if online and not present and options.pull_model:
             from chameleon.llm.models import model_description
-            self.progress("Descargando " + model_description(config.ai.model) + "; espera a la verificación final")
+            self.progress("Downloading " + model_description(config.ai.model) + "; wait for final verification")
             asyncio.run(provider.pull(self.progress))
             manifest["downloaded_model"] = config.ai.model
             write_manifest(self.root, manifest)
             present = True
         if online and present:
-            self.progress("✓ Modelo local encontrado: " + config.ai.model)
-            self.progress("Verificando inferencia estructurada local")
+            self.progress("✓ Local model found: " + config.ai.model)
+            self.progress("Verifying local structured inference")
             asyncio.run(provider.probe())
             self.progress("✓ Ollama · Qwen · Local inference")
             return True
         else:
-            self.progress("⚠ AI OFFLINE. Las reglas locales y el terminal funcionan.")
+            self.progress("⚠ AI OFFLINE. Local rules and the terminal work.")
             return False

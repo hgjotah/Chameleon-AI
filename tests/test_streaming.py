@@ -28,7 +28,7 @@ def test_streamed_plan_is_complete_and_progress_is_observed() -> None:
     provider=OllamaProvider(Config(ai={"command_only": False}).ai,transport(events),progress.append)
     plan=asyncio.run(provider.plan('explica una variable',Context(cwd='C:/')))
     assert plan.summary=='Respuesta.' and plan.trace.output_tokens==15
-    assert progress and progress[0].startswith('QWEN GENERANDO')
+    assert progress and progress[0].startswith('QWEN GENERATING')
 
 
 @pytest.mark.parametrize('ending',[{}, {'done':True,'done_reason':'length'}, {'error':'runner failed'}])

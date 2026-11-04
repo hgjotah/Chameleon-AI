@@ -36,7 +36,7 @@ def emit_cmd(plan: Plan, cwd: Path, root: Path) -> str:
         if action.kind == "env":
             # Export after closing the local scope. Delayed expansion values are unsafe here.
             if "!" in action.value:
-                raise ValueError("CMD: usa PowerShell para variables que contienen !")
+                raise ValueError("CMD: use PowerShell for variables containing !")
             exports.append(command)
             continue
         else:

@@ -73,20 +73,20 @@ def open_console() -> Iterator[Console | None]:
             input_handle = msvcrt.get_osfhandle(input_stream.fileno())
             output_mode, input_mode = wintypes.DWORD(), wintypes.DWORD()
             if not kernel.GetConsoleMode(handle, ctypes.byref(output_mode)):
-                raise OSError("No hay consola de salida")
+                raise OSError("No output console is available")
             if not kernel.GetConsoleMode(
                 input_handle, ctypes.byref(input_mode)
             ):
-                raise OSError("No hay consola de entrada")
+                raise OSError("No input console is available")
             # Keep raw input for the entire interaction, including redraws.
             # Otherwise Ctrl+C between getwch calls reaches the parent CMD and
             # triggers its "Terminate batch job?" prompt instead of cancellation.
             raw_mode = (input_mode.value | 0x0080) & ~(0x0001 | 0x0002 | 0x0004 | 0x0040 | 0x0200)
             if not kernel.SetConsoleMode(input_handle, raw_mode):
-                raise OSError("No se pudo preparar el teclado de la consola")
+                raise OSError("Could not prepare the console keyboard")
             stack.callback(kernel.SetConsoleMode, input_handle, input_mode.value)
             if not kernel.SetConsoleMode(handle, output_mode.value | 0x0004):
-                raise OSError("La consola no admite secuencias VT")
+                raise OSError("The console does not support VT sequences")
             stack.callback(kernel.SetConsoleMode, handle, output_mode.value)
 
             class CursorInfo(ctypes.Structure):
@@ -127,7 +127,7 @@ def select(
             print(title, file=sys.stderr)
             for choice in choices:
                 print(f"  {choice.label}  {choice.detail}".rstrip(), file=sys.stderr)
-            print("Sin consola interactiva: no se ha seleccionado ni ejecutado nada.", file=sys.stderr)
+            print("No interactive console: nothing was selected or executed.", file=sys.stderr)
             return None
         if details:
             # A proposed command must not hide its own preview with ANSI/control
@@ -157,7 +157,7 @@ def select(
                     + text.ljust(width - 4) + RESET
                 )
             lines.extend([
-                MUTED + "  " + _fit(f"{selected + 1}/{len(choices)} · ↑/↓ mover · Enter elegir · Esc cancelar", width - 2) + RESET,
+                MUTED + "  " + _fit(f"{selected + 1}/{len(choices)} · ↑/↓ move · Enter select · Esc cancel", width - 2) + RESET,
                 "",
             ])
             if previous_lines:

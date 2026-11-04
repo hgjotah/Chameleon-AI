@@ -28,7 +28,7 @@ window.show()
 app.processEvents()
 assert not window.ollama.isChecked() and not window.policy.isChecked()
 assert not window.log.isVisible() and not window.advanced.isVisible()
-assert window.primary_button.text() == ("Actualizar Chameleon" if updating else "Instalar Chameleon")
+assert window.primary_button.text() == ("Update Chameleon" if updating else "Install Chameleon")
 QTest.mouseClick(window.primary_button, Qt.MouseButton.LeftButton)
 assert calls == ["install"], calls
 window.details_toggle.setChecked(True)

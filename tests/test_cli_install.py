@@ -25,7 +25,7 @@ def test_frozen_cli_update_allows_services_async_model_probe(tmp_path: Path, mon
             asyncio.run(asyncio.sleep(0))
             assert not options.pull_model and not options.allow_ollama
             calls.append(options)
-            return "Instalación lista."
+            return "Installation ready."
 
     monkeypatch.setattr(service, "SetupService", TestService)
     assert main(["setup", "--install", "--payload", str(payload)]) == 0
@@ -36,7 +36,7 @@ def test_source_cli_install_explains_standalone_requirement(tmp_path: Path, monk
     monkeypatch.setenv("CHAMELEON_HOME", str(tmp_path))
     monkeypatch.setattr(sys, "frozen", False, raising=False)
     assert main(["setup", "--install"]) == 1
-    assert "ejecutable independiente" in capsys.readouterr().err
+    assert "standalone executable" in capsys.readouterr().err
 
 
 def test_frozen_cli_explicit_dependency_install_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -47,6 +47,6 @@ def test_frozen_cli_explicit_dependency_install_flags(tmp_path: Path, monkeypatc
             pass
         def run(self,options):
             assert options.allow_ollama and options.pull_model
-            return "Terminal instalado correctamente. La IA necesita atención."
+            return "Terminal instalado correctamente. La IA needs attention."
     monkeypatch.setattr(service,"SetupService",TestService)
     assert main(["setup","--install","--install-ollama"])==3

@@ -62,7 +62,7 @@ def test_try_real_keyboard_and_parent_state(shell_install, shell, approve):
         request = 've a "' + str(target) + '"'
         invocation = "chameleon ai --try " + (request if shell == "cmd" else ps_quote(request))
         backend.write(invocation + "\r")
-        until("Enter elegir")
+        until("Enter select")
         backend.write("\x1b[B\r" if approve else "\x03" if approve is None else "\r")
         marker = "RESULT_" + uuid.uuid4().hex + ":"
         backend.write(
@@ -70,7 +70,7 @@ def test_try_real_keyboard_and_parent_state(shell_install, shell, approve):
         )
         until(marker + str(target if approve else shell_install))
         if not approve:
-            assert ("Cancelado." if approve is None else "No se ejecutó la propuesta") in output
+            assert ("Cancelled." if approve is None else "The proposal was not executed") in output
         # Cancellation must not create even a pending execution artifact.
         assert not list((shell_install / "runtime/actions").glob("*.cmd"))
         assert not list((shell_install / "runtime/actions").glob("*.response"))

@@ -93,7 +93,7 @@ Plans contain `actions`, rather than treating a list of free-form commands as au
 
 The generation schema requires the full plan envelope, fixes the target shell and exposes only relevant fields for each action kind. Clearly worded file searches use a file-query grammar; Qwen still interprets their pattern, path, size and date constraints. This avoids the 4B model dropping optional filters or substituting a process operation for a file search. Invalid output gets one corrective retry including validation errors, and is never executed.
 
-Model context removes terminal escape sequences, caps visible recent output at 600 characters and includes only relevant executable paths. This bounds privacy exposure and CPU prompt-processing latency. General language preference is reserved for future UI translation; the initial UI uses Spanish with conventional terminal labels, while natural requests support Spanish and English now.
+Model context removes terminal escape sequences, caps visible recent output at 600 characters and includes only relevant executable paths. This bounds privacy exposure and CPU prompt-processing latency. General language preference is reserved for future UI translation; the UI and app-authored messages use English, while natural requests support Spanish and English.
 
 ## Input and interactive programs
 
@@ -105,7 +105,7 @@ PTY reader and AI workers do not call widgets. Qt signals marshal results to the
 
 ## Distribution and updates
 
-PyInstaller onedir shares Qt/Python among console Core and windowed Terminal/Setup. A small standard-library bootstrap embeds the release ZIP and starts the full PySide Setup from a random temporary directory. This avoids duplicating Qt inside the installer and supports repair without holding installed DLLs open. Setup can be run again with a newer release for Update. Version is semantic `0.6.0`; no update server or background downloader exists. Releases can add signing without changing core interfaces.
+PyInstaller onedir shares Qt/Python among console Core and windowed Terminal/Setup. A small standard-library bootstrap embeds the release ZIP and starts the full PySide Setup from a random temporary directory. This avoids duplicating Qt inside the installer and supports repair without holding installed DLLs open. Setup can be run again with a newer release for Update. Version is semantic `0.7.1`; no update server or background downloader exists. Releases can add signing without changing core interfaces.
 
 The build limits dependency scanning to Windows and the Python runtime paths, preventing unrelated developer-tool ICU/API shim DLLs from entering Qt's runtime. Before spawning native shells or external programs, Windows temporarily restores the normal DLL search path and removes bundled paths from the child environment, then restores the parent runtime immediately after creation. See [PyInstaller external programs](https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application).
 

@@ -29,9 +29,9 @@ async def ensure_server(progress: Callable[[str], None]) -> None:
     executable = ollama_executable()
     if not executable:
         raise OSError(
-            "Ollama no está instalado. Instálalo desde https://ollama.com/download/windows"
+            "Ollama is not installed. Install it from https://ollama.com/download/windows"
         )
-    progress("Iniciando Ollama local")
+    progress("Starting local Ollama")
     environment = dict(os.environ, OLLAMA_NO_CLOUD="1", OLLAMA_HOST="127.0.0.1:11434")
     launch(
         [executable, "serve"],
@@ -48,14 +48,14 @@ async def ensure_server(progress: Callable[[str], None]) -> None:
                     return
             except httpx.HTTPError:
                 await asyncio.sleep(1)
-    raise OSError("Ollama no respondió. Consulta chameleon doctor.")
+    raise OSError("Ollama did not respond. Run chameleon doctor.")
 
 
 def install_ollama(progress: Callable[[str], None]) -> None:
     # Called only after explicit GUI consent. TLS + Authenticode; no untrusted mirror.
     with tempfile.TemporaryDirectory(prefix="chameleon-ollama-") as directory:
         installer = Path(directory) / "OllamaSetup.exe"
-        progress("Descargando Ollama desde su fuente oficial")
+        progress("Downloading Ollama from its official source")
         with httpx.Client(timeout=60, follow_redirects=True, trust_env=False) as client:
             with client.stream("GET", "https://ollama.com/download/OllamaSetup.exe") as response:
                 response.raise_for_status()
@@ -66,17 +66,17 @@ def install_ollama(progress: Callable[[str], None]) -> None:
                         stream.write(chunk)
                         completed += len(chunk)
                         if total:
-                            progress(f"Descargando Ollama: {completed * 100 // total}%")
+                            progress(f"Downloading Ollama: {completed * 100 // total}%")
         script = f"$s=Get-AuthenticodeSignature -LiteralPath {ps_quote(str(installer))}; if($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'Ollama'){{exit 1}}"
         result = hidden_run(
             [shell_executable("powershell"), "-NoProfile", "-Command", script], timeout=30
         )
         if result.returncode:
-            raise OSError("Firma Authenticode de Ollama inválida. No se ejecutó el instalador.")
-        progress("Instalando Ollama (firma verificada)")
+            raise OSError("Invalid Ollama Authenticode signature. The installer was not run.")
+        progress("Installing Ollama (signature verified)")
         completed_process = hidden_run(
             [str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
             timeout=900,
         )
         if completed_process.returncode:
-            raise OSError("El instalador oficial de Ollama falló. Usa la instalación manual.")
+            raise OSError("The official Ollama installer failed. Install it manually.")

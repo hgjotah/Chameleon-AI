@@ -60,10 +60,10 @@ def test_native_wrapper_creates_file_after_real_confirmation(shell_install: Path
         else:
             command = "Import-Module " + ps_quote(str(shell_install / "bin/Chameleon.psm1")) + "; chameleon ai " + ps_quote(phrase)
         backend.write(command + "\r")
-        until("¿Ejecutar?")
+        until("Run?")
         assert not (tmp_path / "archivo Niño.txt").exists()
         backend.write("s\r")
-        until("Archivo creado:")
+        until("File created:")
         assert (tmp_path / "archivo Niño.txt").read_text(encoding="utf-8") == "Hola, acción & echo LITERAL"
         if shell != "cmd":
             output = ""
@@ -78,7 +78,7 @@ def test_native_wrapper_creates_file_after_real_confirmation(shell_install: Path
             if shell == "cmd" else "chameleon ai " + ps_quote(deletion)
         )
         backend.write(command + "\r")
-        until("¿Ejecutar?")
+        until("Run?")
         assert (tmp_path / "archivo Niño.txt").is_file()
         backend.write("s\r")
         backend.write("echo VERIFIED_LITERAL_DELETION\r")

@@ -128,7 +128,7 @@ def render_profile(original: bytes, module: Path, remove: bool = False) -> bytes
     end = END.decode().encode(encoding)
     if (begin in original) != (end in original):
         raise ValueError(
-            "Bloque de perfil incompleto. Repara manualmente los delimitadores de Chameleon."
+            "Incomplete profile block. Repair the Chameleon markers manually."
         )
     content = original
     start = content.find(begin)
@@ -158,7 +158,7 @@ def secure_runtime(root: Path) -> None:
 
     match = re.search(r"S-1-5-[\d-]+", result.stdout)
     if not match:
-        raise OSError("No se pudo obtener el SID para proteger runtime")
+        raise OSError("Could not retrieve the SID to secure the runtime")
     try:
         acl = hidden_run(
             [
@@ -172,9 +172,9 @@ def secure_runtime(root: Path) -> None:
             timeout=60,
         )
     except subprocess.TimeoutExpired as exc:
-        raise OSError("Windows tardó demasiado en aplicar los permisos del runtime. La instalación se detuvo; vuelve a intentarlo cuando termine la actividad del disco.") from exc
+        raise OSError("Windows took too long to apply runtime permissions. Installation stopped; try again after disk activity settles.") from exc
     if acl.returncode:
-        raise OSError("No se pudo proteger el runtime privado")
+        raise OSError("Could not secure the private runtime")
 
 
 def shortcuts(root: Path, desktop: bool = False) -> None:
@@ -199,7 +199,7 @@ def shortcuts(root: Path, desktop: bool = False) -> None:
             [shell_executable("powershell"), "-NoProfile", "-Command", script], timeout=20
         )
         if result.returncode:
-            raise OSError("No se pudo crear el acceso directo: " + name)
+            raise OSError("Could not create the shortcut: " + name)
         if desktop and name == "Chameleon Terminal":
             shutil.copy2(link, known_folder(FOLDERS["Desktop"]) / link.name)
 
@@ -236,9 +236,9 @@ def install(
     progress: Callable[[str], None] | None = None,
 ) -> None:
     if not (payload / "ChameleonCore.exe").is_file():
-        raise OSError("Payload incompleto. Ejecuta scripts/build.ps1 primero.")
+        raise OSError("Incomplete payload. Run scripts/build.ps1 first.")
     if root.is_symlink() or (root.exists() and root.is_junction()):
-        raise OSError("No se instala sobre enlaces o junctions")
+        raise OSError("Cannot install over links or junctions")
     profile_list = profiles if profiles is not None else [p for _, p in profile_paths()]
     for profile in profile_list:
         # Validate all existing blocks before changing binaries or any integration.
@@ -247,7 +247,7 @@ def install(
         )
     runtime = root / "runtime"
     if runtime.is_symlink() or (runtime.exists() and runtime.is_junction()):
-        raise OSError("Runtime no puede ser un enlace o junction")
+        raise OSError("Runtime cannot be a link or junction")
     if integrate:
         import psutil
 
@@ -258,7 +258,7 @@ def install(
                 and process.pid != os.getpid()
                 and Path(executable).is_relative_to(root / "core")
             ):
-                raise OSError("Cierra Chameleon Terminal y Settings antes de Repair/Update.")
+                raise OSError("Close Chameleon Terminal and Settings before Repair/Update.")
     root.mkdir(parents=True, exist_ok=True)
     previous = read_manifest(root)
     profile_list = list(dict.fromkeys(profile_list + [Path(p) for p in previous.get("profiles", [])]))
@@ -266,7 +266,7 @@ def install(
         render_profile(profile.read_bytes() if profile.exists() else b"", root / "bin" / "Chameleon.psm1")
     required_bytes = sum(p.stat().st_size for p in payload.rglob("*") if p.is_file()) + 16 * 1024 * 1024
     if shutil.disk_usage(root).free < required_bytes:
-        raise OSError(f"No hay espacio suficiente para instalar el runtime. Libera al menos {required_bytes // 1048576} MB y vuelve a intentarlo.")
+        raise OSError(f"Not enough space to install the runtime. Free at least {required_bytes // 1048576} MB y vuelve a intentarlo.")
     # Snapshot small integration files. Keep the old runtime until everything commits.
     affected = [root / "bin" / "chameleon.cmd", root / "bin" / "Chameleon.psm1",
                 root / "resources" / "chameleon.ico", root / "install.json",
@@ -292,14 +292,14 @@ def install(
     # thousands of bundled files and timed out during real account updates.
     if integrate:
         if progress:
-            progress("Protegiendo la carpeta de acciones y sesiones…")
+            progress("Securing the actions and sessions folder…")
         secure_runtime(root)
     # Copy into staging and validate all files before replacing any installed executable.
     staging = root / "runtime" / "staging"
     if staging.exists():
         shutil.rmtree(staging)
     if progress:
-        progress("Copiando y verificando el runtime incluido…")
+        progress("Copying and verifying the bundled runtime…")
     shutil.copytree(payload, staging)
     hashes = {}
     for p in staging.rglob("*"):
@@ -307,7 +307,7 @@ def install(
             with p.open("rb") as stream:
                 hashes[str(p.relative_to(staging))] = hashlib.file_digest(stream, "sha256").hexdigest()
     if progress:
-        progress("Runtime verificado. Configurando shells y accesos directos…")
+        progress("Runtime verified. Configuring shells and shortcuts…")
     core = root / "core"
     backup = root / "runtime" / ("backup-" + uuid.uuid4().hex)
     replaced = False
@@ -377,7 +377,7 @@ def read_manifest(root: Path) -> dict[str, Any]:
             raise ValueError("Manifest must be an object")
         return result
     except (ValueError, UnicodeError) as exc:
-        raise ValueError("install.json está dañado. Conserva una copia y recupera el manifiesto antes de reparar o desinstalar.") from exc
+        raise ValueError("install.json is damaged. Keep a copy and recover the manifest before repairing or uninstalling.") from exc
 
 
 def write_manifest(root: Path, manifest: dict[str, Any]) -> None:
@@ -418,7 +418,7 @@ def remove_installation(root: Path, delayed: bool = False) -> None:
         or not (root / "install.json").exists()
         or resolved == Path(resolved.anchor)
     ):
-        raise OSError("Destino de desinstalación no válido")
+        raise OSError("Invalid uninstall destination")
     if delayed:
         # Powershell performs all filesystem operations, with a verified fixed target.
         script = f"Start-Sleep -Seconds 3; for($i=0;$i -lt 20;$i++){{try{{Remove-Item -LiteralPath {ps_quote(str(resolved))} -Recurse -Force -ErrorAction Stop; break}}catch{{Start-Sleep -Seconds 1}}}}"

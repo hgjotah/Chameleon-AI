@@ -25,17 +25,17 @@ async def diagnose(root: Path, config: Config) -> list[Check]:
             os.name == "nt" and sys.getwindowsversion().build >= 17763,
             "Windows 10 1809+",
         ),
-        Check("Core", True, "0.7.0"),
+        Check("Core", True, "0.7.1"),
         Check(
             "CMD integration",
             (root / "bin" / "chameleon.cmd").is_file(),
-            "PATH + wrapper; Repair si falta",
+            "PATH + wrapper; Repair if missing",
         ),
         Check(
             "PATH",
             str(root / "bin").casefold()
             in [p.casefold().rstrip("\\") for p in user_path().split(";")],
-            "PATH del usuario",
+            "User PATH",
         ),
     ]
     for shell, profile in profile_paths():
@@ -57,16 +57,16 @@ async def diagnose(root: Path, config: Config) -> list[Check]:
             Check(
                 shell + " ExecutionPolicy",
                 result.returncode == 0 and policy in ("RemoteSigned", "Unrestricted", "Bypass"),
-                policy if result.returncode == 0 and policy else "No se pudo consultar la política. Ejecuta Setup → Reparar.",
+                policy if result.returncode == 0 and policy else "Could not query the policy. Run Setup → Repair.",
             )
         )
     online, present = await OllamaProvider(config.ai).status()
     checks.extend(
         [
-            Check("Ollama executable", bool(ollama_executable()), ollama_executable() or "Ollama no instalado; Setup → Reparar"),
+            Check("Ollama executable", bool(ollama_executable()), ollama_executable() or "Ollama not installed; Setup → Repair"),
             Check("Ollama Local API", online, "127.0.0.1:11434"),
-            Check(config.ai.model, present, "Modelo local descargado"),
-            Check("Runtime", (root / "runtime").is_dir(), "Directorio privado"),
+            Check(config.ai.model, present, "Local model downloaded"),
+            Check("Runtime", (root / "runtime").is_dir(), "Private directory"),
         ]
     )
     return checks

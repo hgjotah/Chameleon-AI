@@ -111,7 +111,7 @@ class WindowsPlatform(PlatformAdapter):
             return "/"
         buffer = ctypes.create_unicode_buffer(32768)
         if not ctypes.windll.kernel32.GetWindowsDirectoryW(buffer, len(buffer)):
-            raise OSError("No se pudo resolver el directorio de Windows")
+            raise OSError("Could not resolve the Windows directory")
         return buffer.value
 
 
@@ -119,7 +119,7 @@ def shell_executable(shell: str) -> str:
     name = {"cmd": "cmd.exe", "powershell": "powershell.exe", "pwsh": "pwsh.exe"}[shell]
     found = shutil.which(name)
     if not found:
-        raise OSError(f"No se encontró {name}")
+        raise OSError(f"Not found: {name}")
     return found
 
 

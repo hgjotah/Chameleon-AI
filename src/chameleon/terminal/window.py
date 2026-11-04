@@ -98,8 +98,8 @@ class TerminalWindow(QMainWindow):
         header.addLayout(brand)
         header.addStretch()
         self.indicator = StatusPill()
-        settings_button = MotionButton("Ajustes")
-        settings_button.setToolTip("Personalizar terminal, IA y privacidad · Ctrl+,")
+        settings_button = MotionButton("Settings")
+        settings_button.setToolTip("Customize terminal, AI and privacy · Ctrl+,")
         settings_button.clicked.connect(self.settings)
         header.addWidget(settings_button)
         outer.addLayout(header)
@@ -121,7 +121,7 @@ class TerminalWindow(QMainWindow):
             ]
             + "  ▾"
         )
-        shell_button.setToolTip("Abrir una nueva sesión con otro shell")
+        shell_button.setToolTip("Open a new session with another shell")
         menu = QMenu(shell_button)
         for shell, name in (
             ("cmd", "CMD"),
@@ -133,7 +133,7 @@ class TerminalWindow(QMainWindow):
                 shell_executable(shell)
             except OSError:
                 action.setEnabled(False)
-                action.setText(name + " (no instalado)")
+                action.setText(name + " (not installed)")
             action.triggered.connect(lambda checked=False, choice=shell: self.new_session(choice))
         shell_button.clicked.connect(
             lambda: menu.exec(shell_button.mapToGlobal(shell_button.rect().bottomLeft()))
@@ -144,31 +144,31 @@ class TerminalWindow(QMainWindow):
         local_badge.hide()
         bar_layout.addStretch()
         bar_layout.addWidget(self.indicator)
-        raw_button = MotionButton("Entrada directa")
+        raw_button = MotionButton("Direct input")
         raw_button.setCheckable(True)
-        raw_button.setToolTip("Enviar toda la entrada al shell, sin interpretar lenguaje natural")
-        self.raw_action = QAction("Entrada directa", self)
+        raw_button.setToolTip("Send all input to the shell without interpreting natural language")
+        self.raw_action = QAction("Direct input", self)
         self.raw_action.setCheckable(True)
         raw_button.toggled.connect(self.raw_action.setChecked)
         self.raw_action.toggled.connect(raw_button.setChecked)
         self.raw_action.toggled.connect(
-            lambda enabled: raw_button.setText("Directa: activa" if enabled else "Entrada directa")
+            lambda enabled: raw_button.setText("Direct input: on" if enabled else "Direct input")
         )
         raw_button.setFlat(True)
-        guide = MotionButton("Guía")
+        guide = MotionButton("Guide")
         guide.clicked.connect(self.show_guide)
         header.insertWidget(header.count() - 1, guide)
         guide.setFlat(True)
-        self.drawer_button = MotionButton("IA y permisos")
+        self.drawer_button = MotionButton("AI and permissions")
         self.drawer_button.setFixedWidth(150)
         self.drawer_button.setCheckable(True)
         self.drawer_button.toggled.connect(self.toggle_insights)
-        self.drawer_button.setToolTip("Modelo, permisos y detalle de la consulta")
+        self.drawer_button.setToolTip("Model, permissions and request details")
         bar_layout.addWidget(self.drawer_button)
         new_button = MotionButton("+")
         new_button.setFixedWidth(44)
-        new_button.setToolTip("Nueva sesión")
-        new_button.setAccessibleName("Nueva sesión")
+        new_button.setToolTip("New session")
+        new_button.setAccessibleName("New session")
         new_button.clicked.connect(lambda: self.new_session(self.config.terminal.shell))
         bar_layout.addWidget(new_button)
         outer.addWidget(bar)
@@ -189,10 +189,10 @@ class TerminalWindow(QMainWindow):
         insight = QVBoxLayout(self.insight_panel)
         insight.setContentsMargins(20, 22, 20, 20)
         insight.setSpacing(15)
-        label = QLabel("CONFIGURACIÓN DE LA SESIÓN")
+        label = QLabel("SESSION SETTINGS")
         label.setObjectName("eyebrow")
         insight.addWidget(label)
-        title = QLabel("IA y permisos")
+        title = QLabel("AI and permissions")
         title.setStyleSheet("font-size:21px;font-weight:600;color:#edf3e9")
         insight.addWidget(title)
         self.model_picker = QComboBox()
@@ -201,38 +201,38 @@ class TerminalWindow(QMainWindow):
             self.model_picker.addItem(config.ai.model)
         self.model_picker.setCurrentText(config.ai.model)
         self.model_picker.currentTextChanged.connect(self.change_model)
-        model_label = QLabel("Modelo local")
+        model_label = QLabel("Local model")
         model_label.setObjectName("muted")
         insight.addWidget(model_label)
         insight.addWidget(self.model_picker)
         self.access_picker = QComboBox()
         for mode, mode_label in (
-            ("read_only", "Solo lectura"),
-            ("balanced", "Equilibrado"),
-            ("developer", "Desarrollador · confirmar"),
-            ("custom", "Personalizado"),
-            ("full", "Acceso total · sin confirmación"),
+            ("read_only", "Read only"),
+            ("balanced", "Balanced"),
+            ("developer", "Developer · confirm"),
+            ("custom", "Custom"),
+            ("full", "Full access · no confirmation"),
         ):
             self.access_picker.addItem(mode_label, mode)
         self.access_picker.setCurrentIndex(self.access_picker.findData(config.safety.mode))
         self.access_picker.currentIndexChanged.connect(self.change_access)
         self.access_picker.setToolTip(
-            "Permisos para esta ventana. Personaliza y guarda en Ajustes → Acceso del modelo."
+            "Permissions for this window. Customize and save in Settings → Model access."
         )
-        access_label = QLabel("Acceso del modelo")
+        access_label = QLabel("Model access")
         access_label.setObjectName("muted")
         insight.addWidget(access_label)
         insight.addWidget(self.access_picker)
         self.route = QComboBox()
-        self.route.addItems(["Automático · rápido", "Qwen · siempre"])
+        self.route.addItems(["Automatic · fast", "Qwen · always"])
         self.route.setCurrentIndex(1 if config.ai.prefer_model else 0)
         self.route.setToolTip(
-            "Automático usa reglas locales cuando son suficientes. Qwen fuerza una llamada real al modelo para las peticiones naturales."
+            "Automatic uses local rules when sufficient. Qwen forces a real model call for natural-language requests."
         )
         self.route.currentIndexChanged.connect(self.change_route)
         insight.addWidget(self.route)
         insight.addWidget(raw_button)
-        self.source_label = QLabel("Escribe una petición para ver su origen.")
+        self.source_label = QLabel("Enter a request to see its source.")
         self.source_label.setWordWrap(True)
         self.source_label.setObjectName("muted")
         insight.addWidget(self.source_label)
@@ -240,11 +240,11 @@ class TerminalWindow(QMainWindow):
         separator.setObjectName("divider")
         separator.setFixedHeight(1)
         insight.addWidget(separator)
-        self.answer_heading = QLabel("Última petición")
+        self.answer_heading = QLabel("Last request")
         self.answer_heading.setStyleSheet("font-weight:600;color:#d1ebe2")
         insight.addWidget(self.answer_heading)
         self.answer_label = QLabel(
-            "Aquí aparecerá únicamente el comando. Tú eliges los permisos y las confirmaciones."
+            "Only the command will appear here. You choose permissions and confirmations."
         )
         self.answer_label.setWordWrap(True)
         self.answer_label.setTextFormat(Qt.TextFormat.PlainText)
@@ -283,10 +283,10 @@ class TerminalWindow(QMainWindow):
         self.path_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         footer.addWidget(self.path_label, 1)
-        self.activity_label = QLabel("Listo")
+        self.activity_label = QLabel("Ready")
         self.activity_label.setObjectName("muted")
         footer.addWidget(self.activity_label)
-        keys = QLabel("Ctrl+C cancelar   ·   Ctrl+Shift+V pegar   ·   F11 ampliar")
+        keys = QLabel("Ctrl+C cancel   ·   Ctrl+Shift+V paste   ·   F11 full screen")
         keys.setStyleSheet("font-size:11px;color:#819783;margin-left:18px")
         footer.addWidget(keys)
         outer.addLayout(footer)
@@ -298,7 +298,7 @@ class TerminalWindow(QMainWindow):
                 f"Interpretando · {time.monotonic() - self._processing_since:.1f} s"
             )
         )
-        setting_action = QAction("Ajustes", self)
+        setting_action = QAction("Settings", self)
         setting_action.setShortcut("Ctrl+,")
         setting_action.triggered.connect(self.settings)
         self.addAction(setting_action)
@@ -320,7 +320,7 @@ class TerminalWindow(QMainWindow):
 
     def loaded(self, ok: bool) -> None:
         if not ok:
-            QMessageBox.critical(self, "Chameleon", "No se pudo cargar el renderer local.")
+            QMessageBox.critical(self, "Chameleon", "Could not load the local renderer.")
             return
         self.apply_settings()
 
@@ -367,19 +367,19 @@ class TerminalWindow(QMainWindow):
             else "#7d9287"
         )
         labels = {
-            "AI LOCAL": "IA local disponible",
-            "PROCESSING": "Preparando tu petición",
-            "AI OFFLINE": "Qwen sin conexión · reglas listas",
-            "AI CHECKING": "Comprobando Qwen",
-            "AI DISABLED": "IA desactivada · reglas listas",
-            "AI ENABLED": "IA activada",
-            "SHELL EXITED": "Sesión terminada",
+            "AI LOCAL": "Local AI available",
+            "PROCESSING": "Preparing your request",
+            "AI OFFLINE": "Qwen offline · local rules ready",
+            "AI CHECKING": "Checking Qwen",
+            "AI DISABLED": "AI disabled · local rules ready",
+            "AI ENABLED": "AI enabled",
+            "SHELL EXITED": "Session ended",
         }
         labels.update(
             {
-                "QWEN CONSULTANDO": "Consultando Qwen",
-                "QWEN COMPROBANDO ARCHIVO": "Comprobando datos reales",
-                "QWEN RESPONDIENDO": "Qwen preparando respuesta",
+                "QWEN QUERYING": "Querying Qwen",
+                "QWEN CHECKING FILE": "Checking real data",
+                "QWEN RESPONDING": "Qwen is preparing a response",
             }
         )
         self.indicator.set_state(labels.get(status, status), color, processing)
@@ -389,7 +389,7 @@ class TerminalWindow(QMainWindow):
             self.activity_timer.start()
         else:
             self.activity_timer.stop()
-            self.activity_label.setText("Sesión terminada" if status == "SHELL EXITED" else "Listo")
+            self.activity_label.setText("Session ended" if status == "SHELL EXITED" else "Ready")
 
     def set_location(self, path: str) -> None:
         self.path_label.setToolTip(path)
@@ -433,7 +433,7 @@ class TerminalWindow(QMainWindow):
         if not hasattr(self, "insight_scroll"):
             return
         self._drawer_open = opened
-        self.drawer_button.setText("Cerrar panel" if opened else "IA y permisos")
+        self.drawer_button.setText("Close panel" if opened else "AI and permissions")
         self.drawer_escape.setEnabled(opened)
         self.drawer_motion.stop()
         was_visible = self.insight_scroll.isVisible()
@@ -465,9 +465,9 @@ class TerminalWindow(QMainWindow):
         if self.session:
             self.session.config.safety = self.config.safety.model_copy(deep=True)
         self.access_picker.setToolTip(
-            "Sin bloqueos ni confirmaciones de Chameleon · permisos de Windows sin elevar."
+            "No Chameleon blocks or confirmations · standard Windows user permissions."
             if self.config.safety.mode == "full"
-            else "Perfil de esta ventana; guárdalo en Ajustes si quieres conservarlo."
+            else "Profile for this window; save it in Settings to keep it."
         )
 
     def new_session(self, shell: str) -> None:
@@ -481,20 +481,20 @@ class TerminalWindow(QMainWindow):
 
     def show_guide(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("Tu terminal, en tus palabras")
+        dialog.setWindowTitle("Your terminal, in your words")
         dialog.resize(600, 440)
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(28, 24, 28, 24)
-        title = QLabel("Empieza con una frase.")
+        title = QLabel("Start with a sentence.")
         title.setObjectName("heading")
         layout.addWidget(title)
         note = QLabel(
-            "Escríbela directamente en el terminal. Los comandos habituales\nfuncionan como siempre; los cambios te pedirán confirmación."
+            "Type it directly in the terminal. Regular commands\nwork as usual; changes require confirmation."
         )
         note.setObjectName("muted")
         layout.addWidget(note)
         examples = QLabel(
-            'crea un archivo llamado notas.txt con contenido "Hola"\n\ncrea una carpeta llamada proyecto\n\nve a documentos\n\nlee notas.txt\n\ncopia notas.txt a copia.txt\n\nbusca todos los archivos python mayores de 1 MB'
+            'chameleon ai create a file named notes.txt with content "Hello"\n\nchameleon ai create a folder named project\n\nchameleon ai go to Documents\n\nchameleon ai read notes.txt\n\nchameleon ai copy notes.txt to copy.txt\n\nchameleon ai find Python files larger than 1 MB'
         )
         examples.setObjectName("path")
         layout.addWidget(examples, 1)
@@ -511,7 +511,7 @@ class TerminalWindow(QMainWindow):
         except Exception as exc:
             logging.getLogger("chameleon").error("Plan dispatch failed: %s", type(exc).__name__)
             self.on_failure(
-                "No se pudo preparar la acción. Ejecuta chameleon doctor y vuelve a intentarlo."
+                "Could not prepare the action. Run chameleon doctor and try again."
             )
 
     def _on_plan(self, plan: Plan, assessment: Assessment) -> None:
@@ -522,11 +522,11 @@ class TerminalWindow(QMainWindow):
             return
         self.source_label.setText(plan.trace.label())
         self.answer_heading.setText(
-            "Comando"
+            "Command"
             if self.config.ai.command_only
             else "Respuesta"
             if plan.intent == "explain"
-            else "Acción propuesta"
+            else "Proposed action"
         )
         self.answer_label.setText(plan.summary[:1200])
         if self.config.ai.command_only and plan.intent == "execute":
@@ -542,7 +542,7 @@ class TerminalWindow(QMainWindow):
             if plan.trace.source == "local" and any(
                 a.kind in ("create", "copy", "move", "mkdir") for a in plan.actions
             ):
-                self.answer_heading.setText("Acción local")
+                self.answer_heading.setText("Local action")
                 self.answer_label.setText(
                     "\n".join(
                         describe_action(a, self.session.cwd, plan.shell != "cmd")
@@ -579,11 +579,11 @@ class TerminalWindow(QMainWindow):
                 describe_action(a, self.session.cwd, plan.shell != "cmd") for a in plan.actions
             )
             confirmation = QMessageBox(self)
-            confirmation.setWindowTitle("Chameleon necesita confirmación")
+            confirmation.setWindowTitle("Chameleon needs confirmation")
             confirmation.setIcon(QMessageBox.Icon.Question)
             confirmation.setTextFormat(Qt.TextFormat.PlainText)
             confirmation.setText(
-                "Revisa los cambios antes de continuar.\n\n" + commands + "\n\n" + assessment.reason
+                "Review the changes before continuing.\n\n" + commands + "\n\n" + assessment.reason
             )
             confirmation.setStandardButtons(
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -596,8 +596,8 @@ class TerminalWindow(QMainWindow):
         self.session.execute(plan, assessment)
 
     def on_failure(self, message: str) -> None:
-        self.source_label.setText("Consulta sin completar · no se ejecutó ninguna acción nueva.")
-        self.answer_heading.setText("Necesita atención")
+        self.source_label.setText("Request incomplete · no new action was executed.")
+        self.answer_heading.setText("Needs attention")
         self.answer_label.setText(message)
         if self.session:
             self.session.output.emit("\r\nChameleon: " + message.replace("\n", "\r\n") + "\r\n")

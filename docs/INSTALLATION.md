@@ -1,32 +1,33 @@
 # Installation, repair and removal
 
-## Modelo y acceso en 0.5.1
+## Model and access selection
 
-Setup permite elegir qwen3:4b-instruct (~2,5 GB) o qwen2.5:0.5b (~398 MB).
-Reutiliza el modelo elegido si está presente; si no, lo descarga al preparar IA.
-En Ajustes → IA local puedes descargar/probar otra etiqueta local y guardarla.
-La selección rápida del terminal afecta a esa ventana. No cambia a otro modelo
-silenciosamente cuando falta el seleccionado.
+Setup offers qwen3:4b-instruct (~2.5 GB) and qwen2.5:0.5b (~398 MB).
+It reuses the selected model if present; otherwise AI preparation downloads it.
+Settings → Local AI lets you download/test another local tag and save it.
+The terminal's quick selector affects that window. A missing model never causes
+an automatic switch to another tag.
 
-Ajustes → Acceso del modelo define los perfiles y permisos. El selector rápido
-afecta a la sesión; guarda el perfil en Ajustes para los siguientes procesos CLI/
-ventanas. Acceso total ejecuta sin bloqueos/confirmaciones de Chameleon con los
-derechos actuales de Windows. Scripts arbitrarios necesitan todos los permisos
-de efectos; los filtros de aplicación no son un sandbox de Windows.
+Settings → Model access defines profiles and permissions. The quick selector
+applies to the session; save the profile in Settings for future CLI processes and
+windows. Full access runs without Chameleon blocks/confirmations using your
+current Windows rights. Explicit `--try` previews still require approval.
+Arbitrary scripts require all effect permissions; application filters are not
+a Windows sandbox.
 
-## Preparación de IA en 0.4.0
+## AI preparation
 
-Setup muestra tres estados diferentes: ejecutable de Ollama instalado, servidor local accesible y modelo descargado. **Preparar IA** solicita consentimiento para instalar Ollama oficial si falta, inicia el servidor, descarga Qwen si falta y verifica una respuesta real. Reutiliza las dependencias presentes. Una descarga interrumpida deja la IA pendiente; vuelve a ejecutar **Reparar**. El porcentaje pertenece a la descarga actual, no a una estimación de toda la instalación.
+Setup shows three separate states: Ollama executable installed, local server accessible and model downloaded. **Prepare AI and verify the connection** requires consent to install official Ollama if missing, starts the server, downloads a missing model and verifies a real response. Existing dependencies are reused. An interrupted download leaves AI pending; run **Repair** again. Percentages refer to the current download, not an estimate of the entire installation.
 
-La instalación silenciosa desde el runtime independiente permite autorizar las dependencias explícitamente:
+Silent installation through the standalone runtime supports explicit dependency authorization:
 
 ```powershell
 .\ChameleonCore.exe setup --install --payload . --install-ollama --download-model
 ```
 
-Sin esas opciones sólo reutiliza dependencias existentes. El código 3 indica terminal instalado pero IA pendiente; 0 indica preparación completada. Las consultas inician Ollama si ya está instalado y su servidor está detenido; nunca descargan software automáticamente.
+Without these options, it only reuses existing dependencies. Exit code 3 means the terminal is installed but AI is pending; 0 means preparation completed. Requests start Ollama if it is already installed but stopped; they never download software automatically.
 
-Tras instalar, abre CMD desde Inicio en una ventana nueva. Las consolas y aplicaciones abiertas antes de instalar conservan su PATH anterior; si abres pestañas desde Windows Terminal, VS Code u otro host que ya estaba abierto, ciérralo completamente y vuelve a abrirlo. Setup comunica el cambio a Explorer y conserva las otras entradas del PATH del usuario.
+After installing, open CMD from Start in a new window. Consoles and applications opened before installation retain their previous PATH. If you open tabs from an existing Windows Terminal, VS Code or another host, close that host completely and reopen it. Setup notifies Explorer and preserves all other user PATH entries.
 
 Run `ChameleonSetup.exe`. The initial bootstrap extracts only its embedded release into a random temporary directory, starts the PySide installer, waits for exit and removes the temporary payload. The target requires no preinstalled Python.
 

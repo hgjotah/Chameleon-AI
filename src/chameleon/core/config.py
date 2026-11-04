@@ -43,7 +43,7 @@ class AIConfig(StrictSettings):
     @classmethod
     def local_model_only(cls, value: str) -> str:
         if not value.strip() or ":cloud" in value.casefold() or value.casefold().endswith("-cloud"):
-            raise ValueError("Solo se admiten modelos locales descargados; cloud no está permitido")
+            raise ValueError("Only downloaded local models are supported; cloud models are not allowed")
         return value
 
 
@@ -88,7 +88,7 @@ class SafetyConfig(StrictSettings):
 
 
 class GeneralConfig(StrictSettings):
-    language: Literal["es", "en"] = "es"
+    language: Literal["es", "en"] = "en"
     startup_checks: bool = True
 
 
@@ -124,5 +124,5 @@ def load_config(root: Path | None = None) -> tuple[Config, str | None]:
         save_config(config, root)
         return (
             config,
-            f"Configuración dañada; defaults restaurados. Backup: {backup.name} ({type(exc).__name__})",
+            f"Invalid configuration; defaults restored. Backup: {backup.name} ({type(exc).__name__})",
         )

@@ -75,7 +75,7 @@ def test_mkdir_copy_move_and_missing_parent(tmp_path: Path) -> None:
     assert not (tmp_path / 'original.txt').exists()
     action = Action(kind='create', path=str(tmp_path / 'missing/file.txt'))
     decision = RiskEngine().action(action, tmp_path)
-    assert decision.level == Risk.BLOCKED and 'carpeta de destino' in decision.reason
+    assert decision.level == Risk.BLOCKED and 'destination folder' in decision.reason
 
 
 @pytest.mark.parametrize('name', ['CON.txt', 'NUL', 'LPT1.log', 'file:stream', 'bad?.txt', 'trailing.'])

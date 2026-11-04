@@ -36,7 +36,7 @@ class Engine:
                     local = Plan(
                         intent="error",
                         shell=context.shell,
-                        summary="El destino ya existe y la petición no solicita sobrescribirlo. Usa otro nombre o pide expresamente la sustitución.",
+                        summary="The destination already exists and the request does not ask to overwrite it. Use another name or explicitly request replacement.",
                     )
         # Missing/ambiguous literal paths are observations, not an invitation for
         # a forced model to guess a different file.
@@ -50,7 +50,7 @@ class Engine:
         if plan is None:
             if not self.config.ai.enabled:
                 raise ProviderError(
-                    "IA desactivada. Las reglas locales y el terminal siguen disponibles."
+                    "AI is disabled. Local rules and the terminal are still available."
                 )
             trace = InferenceTrace(source="qwen")
             context = context.model_copy(deep=True)
@@ -126,7 +126,7 @@ class Engine:
                 async with asyncio.timeout(self.config.ai.timeout):
                     for _ in range(3):
                         self.progress(
-                            "QWEN RESPONDIENDO" if context.evidence else "QWEN CONSULTANDO"
+                            "QWEN RESPONDING" if context.evidence else "QWEN QUERYING"
                         )
                         plan = await self.provider.plan(request, context)
                         trace.model = plan.trace.model or self.config.ai.model
@@ -140,13 +140,13 @@ class Engine:
                                 and not any(e.get("ok") for e in context.evidence)
                             ):
                                 raise ProviderError(
-                                    "Qwen devolvió una respuesta sobre archivos sin comprobarlos. No se presenta como un hecho; indica la ruta o pide leer el archivo."
+                                    "Qwen answered about files without checking them. The answer cannot be presented as fact; provide a path or ask to read the file."
                                 )
                             plan.trace = trace
                             break
                         if self.config.safety.strict_mode and self.config.safety.mode != "full":
                             raise ProviderError(
-                                "El modo estricto no permite inspección automática. Usa una consulta explícita para leer el archivo o carpeta."
+                                "Strict mode does not allow automatic inspection. Use an explicit query to read the file or folder."
                             )
                         # Any tool request enters the observation/answer phase,
                         # including wording not covered by the initial heuristic.
@@ -157,17 +157,17 @@ class Engine:
                             forbidden = denied(action, self.config.safety)
                             if forbidden:
                                 raise ProviderError(forbidden)
-                            self.progress("QWEN COMPROBANDO ARCHIVO")
+                            self.progress("QWEN CHECKING FILE")
                             result = await asyncio.to_thread(inspect_action, action, context)
                             context.evidence.append(result)
                             trace.inspections += 1
                     else:
                         raise ProviderError(
-                            "Qwen solicitó demasiadas consultas. No se realizó ningún cambio; concreta la petición."
+                            "Qwen requested too many queries. No changes were made; make your request more specific."
                         )
             except TimeoutError as exc:
                 raise ProviderError(
-                    "La consulta a Qwen superó el tiempo límite. No se realizó ningún cambio; aumenta el timeout en Ajustes → IA o concreta la petición."
+                    "The Qwen request timed out. No changes were made; increase the timeout in Settings → Local AI or make your request more specific."
                 ) from exc
         current = Path(context.cwd)
         for action in plan.actions:
@@ -189,7 +189,7 @@ class Engine:
                         plan = Plan(
                             intent="clarify",
                             shell=context.shell,
-                            summary="El nombre corresponde a varios archivos. Selecciona la ruta exacta.",
+                            summary="The name matches several files. Select the exact path.",
                             choices=[str(p) for p in matches[:20]],
                             trace=plan.trace,
                         )
@@ -213,19 +213,19 @@ class Engine:
             policy=self.config.safety,
         )
         if plan.intent == "execute" and any(a.kind == "delete" for a in plan.actions):
-            plan.summary = "Propuesta de eliminación: " + "; ".join(
+            plan.summary = "Proposed deletion: " + "; ".join(
                 a.path for a in plan.actions if a.kind == "delete"
             )
         elif plan.intent == "execute" and any(
             a.kind in ("create", "mkdir", "copy", "move") for a in plan.actions
         ):
-            plan.summary = "Cambios propuestos, pendientes de confirmación: " + "; ".join(
+            plan.summary = "Proposed changes, awaiting confirmation: " + "; ".join(
                 a.kind + " " + a.path for a in plan.actions
             )
         assessment = self.risk.assess(plan, Path(context.cwd))
         if assessment.requires_admin and not context.admin:
             assessment = Assessment(
-                Risk.BLOCKED, "La acción requiere una terminal elevada. No se ejecutó nada.", True
+                Risk.BLOCKED, "This action requires an elevated terminal. Nothing was executed.", True
             )
         # This execution snapshot is always authored by the app, never accepted
         # from model JSON. File helpers must use the same selected session policy.

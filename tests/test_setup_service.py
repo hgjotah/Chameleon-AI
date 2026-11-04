@@ -62,9 +62,9 @@ def test_failed_ai_probe_does_not_report_core_installation_failure(tmp_path: Pat
     monkeypatch.setattr(SetupService, "configure_ai", fail)
     events: list[str] = []
     result = SetupService(tmp_path, tmp_path, events.append).run(InstallOptions())
-    assert "Terminal instalado correctamente" in result
-    assert "necesita atención" in result
-    assert any("IA pendiente" in event for event in events)
+    assert "Terminal installed successfully" in result
+    assert "needs attention" in result
+    assert any("AI pending" in event for event in events)
 
 
 def test_fresh_ai_install_performs_every_dependency_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

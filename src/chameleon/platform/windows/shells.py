@@ -21,10 +21,10 @@ def query_command(action: Action, powershell: bool = False, policy_token: str = 
         result += " --policy " + quote(policy_token)
     if not powershell and len(result) > 7900:
         raise ValueError(
-            "La acción supera la longitud máxima de CMD. Reduce el contenido o usa una sesión PowerShell."
+            "The action exceeds CMD's maximum length. Shorten the content or use a PowerShell session."
         )
     return result + (
-        "; if ($LASTEXITCODE -ne 0) { throw 'Chameleon: no se pudo completar la acción' }"
+        "; if ($LASTEXITCODE -ne 0) { throw 'Chameleon: could not complete the action' }"
         if powershell
         else ""
     )
@@ -41,17 +41,17 @@ def needs_query(action: Action) -> bool:
 def describe_action(action: Action, cwd: Path, powershell: bool = False) -> str:
     if action.kind in ("delete", "read"):
         return (
-            ("Eliminar permanentemente" if action.kind == "delete" else "Leer archivo")
-            + "\nRuta: "
+            ("Permanently delete" if action.kind == "delete" else "Read file")
+            + "\nPath: "
             + action.path
-            + ("\nIncluye su contenido completo." if action.recursive else "")
+            + ("\nIncludes all its contents." if action.recursive else "")
         )
     if action.kind in ("create", "mkdir", "copy", "move"):
         names = {
-            "create": "Crear archivo UTF-8 (sin sobrescribir)",
-            "mkdir": "Crear carpeta",
-            "copy": "Copiar archivo (sin sobrescribir)",
-            "move": "Mover archivo (sin sobrescribir)",
+            "create": "Create UTF-8 file (without overwriting)",
+            "mkdir": "Create folder",
+            "copy": "Copy file (without overwriting)",
+            "move": "Move file (without overwriting)",
         }
         content = "".join(
             char if ord(char) >= 32 or char in "\n\t" else f"\\x{ord(char):02x}"
@@ -59,17 +59,17 @@ def describe_action(action: Action, cwd: Path, powershell: bool = False) -> str:
         )
         return (
             names[action.kind]
-            + "\nRuta: "
+            + "\nPath: "
             + action.path
-            + ("\nDestino: " + action.destination if action.destination else "")
-            + ("\nContenido:\n" + content if action.kind == "create" else "")
+            + ("\nDestination: " + action.destination if action.destination else "")
+            + ("\nContent:\n" + content if action.kind == "create" else "")
         )
     return (PowerShellAdapter() if powershell else CmdAdapter()).render(action, cwd)
 
 
 def cmd_quote(value: str, batch: bool = True) -> str:
     if any(c in value for c in '\r\n\x00"'):
-        raise ValueError("CMD no admite comillas ni controles en este argumento")
+        raise ValueError("CMD does not allow quotes or control characters in this argument")
     # Batch files parse percent once; delayed expansion is disabled by the executor.
     return '"' + (value.replace("%", "%%") if batch else value) + '"'
 
@@ -95,7 +95,7 @@ class CmdAdapter(ShellAdapter):
             return "cls"
         if action.kind in ("list", "find"):
             if any(c in action.pattern for c in '\\/:"%!?&|<>^()'):
-                raise ValueError("Patrón inválido")
+                raise ValueError("Invalid pattern")
             return (
                 "dir "
                 + ("/s /b " if action.recursive or action.kind == "find" else "")
@@ -107,7 +107,7 @@ class CmdAdapter(ShellAdapter):
             return ("rmdir /s /q " if action.recursive else "del /q ") + quoted
         if action.kind == "env":
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", action.name):
-                raise ValueError("Variable inválida")
+                raise ValueError("Invalid variable")
             return "set " + cmd_quote(action.name + "=" + action.value)
         return action.command
 

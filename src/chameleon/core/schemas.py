@@ -76,9 +76,9 @@ class InferenceTrace(BaseModel):
 
     def label(self) -> str:
         return (
-            "Regla local · sin inferencia"
+            "Local rule · no inference"
             if self.source == "local"
-            else f"Ollama · {self.model} · {self.calls} llamada(s) · {self.output_tokens} tokens · {self.duration_ms / 1000:.1f} s · {self.inspections} inspección(es)"
+            else f"Ollama · {self.model} · {self.calls} call(s) · {self.output_tokens} tokens · {self.duration_ms / 1000:.1f} s · {self.inspections} inspection(s)"
         )
 
 

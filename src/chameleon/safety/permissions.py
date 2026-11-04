@@ -96,12 +96,12 @@ def denied(action: Action, policy: SafetyConfig) -> str | None:
         return None
     caps = policy.permissions()
     if action.kind == "command" and session_read(action.command):
-        return None if caps["read"] else "Permisos desactivados: read. Ajustes → Acceso del modelo."
+        return None if caps["read"] else "Permissions disabled: read. Settings → Model access."
     if action.kind == "command" and session_change(action.command):
         return (
             None
             if caps["commands"]
-            else "Permisos desactivados: commands. Ajustes → Acceso del modelo."
+            else "Permissions disabled: commands. Settings → Model access."
         )
     needed = {"read"}
     if action.kind in ("create", "mkdir", "copy", "move", "env"):
@@ -295,7 +295,7 @@ def denied(action: Action, policy: SafetyConfig) -> str | None:
                 needed.add("write")
     missing = sorted(name for name in needed if not caps[name])
     return (
-        "Permisos desactivados: " + ", ".join(missing) + ". Ajustes → Acceso del modelo."
+        "Permissions disabled: " + ", ".join(missing) + ". Settings → Model access."
         if missing
         else None
     )

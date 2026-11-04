@@ -14,7 +14,7 @@ class BrandMark(QWidget):
         super().__init__(parent)
         self.setFixedSize(size, size)
         self.logo = QPixmap(str(asset_dir() / "icons/chameleon.png"))
-        self.setAccessibleName("Camaleón Chameleon")
+        self.setAccessibleName("Chameleon logo")
 
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -26,9 +26,9 @@ class BrandMark(QWidget):
 
 class StatusPill(QLabel):
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("Comprobando IA", parent)
+        super().__init__("Checking AI", parent)
         self.color = "#91a58d"
-        self._full_text = "Comprobando IA"
+        self._full_text = "Checking AI"
         self.phase = 0.0
         self.setContentsMargins(23, 5, 12, 5)
         self.setFixedHeight(30)
@@ -36,7 +36,7 @@ class StatusPill(QLabel):
         self.timer = QTimer(self)
         self.timer.setInterval(45)
         self.timer.timeout.connect(self.pulse)
-        self.set_state("Comprobando IA", "#91a58d")
+        self.set_state("Checking AI", "#91a58d")
 
     def set_state(self, text: str, color: str, active: bool = False) -> None:
         self._full_text = text

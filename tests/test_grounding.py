@@ -127,7 +127,7 @@ def test_fabricated_state_answer_is_not_presented(tmp_path: Path) -> None:
         )
 
     provider = OllamaProvider(Config(ai={"command_only": False}).ai, httpx.MockTransport(handle))
-    with pytest.raises(ProviderError, match="sin comprobar"):
+    with pytest.raises(ProviderError, match="without checking"):
         asyncio.run(
             Engine(Config(ai={"command_only": False}), provider).plan("qué contiene registro.txt", Context(cwd=str(tmp_path)))
         )
@@ -144,7 +144,7 @@ def test_inspection_cannot_write_or_escape_scope(tmp_path: Path) -> None:
     result = inspect_action(
         Action(kind="read", path=str(tmp_path.parent / "outside.txt")), Context(cwd=str(tmp_path))
     )
-    assert not result["ok"] and "limitada" in result["error"]
+    assert not result["ok"] and "limited" in result["error"]
     assert not (tmp_path / "oops.txt").exists()
 
 
@@ -222,7 +222,7 @@ def test_forced_creation_schema_has_no_shell_command_variant(tmp_path: Path) -> 
     cfg=Config(ai={"command_only": False})
     cfg.ai.prefer_model=True
     plan,risk=asyncio.run(Engine(cfg,OllamaProvider(cfg.ai,httpx.MockTransport(handle))).plan('crea un archivo llamado saludo.txt con contenido "Hola"',Context(cwd=str(tmp_path))))
-    assert risk.level==Risk.CONFIRM and "pendientes" in plan.summary
+    assert risk.level==Risk.CONFIRM and "awaiting" in plan.summary
     assert not (tmp_path/'saludo.txt').exists()
 
 

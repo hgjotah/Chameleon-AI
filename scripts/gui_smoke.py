@@ -56,7 +56,7 @@ def tick() -> None:
     if not session:
         return
     for dialog in app.topLevelWidgets():
-        if isinstance(dialog, QMessageBox) and "confirmación" in dialog.windowTitle():
+        if isinstance(dialog, QMessageBox) and "confirmation" in dialog.windowTitle():
             button = dialog.button(QMessageBox.StandardButton.Yes if accept_creation else QMessageBox.StandardButton.No)
             if button:
                 confirmation_count += 1

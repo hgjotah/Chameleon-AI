@@ -33,14 +33,14 @@ else:
             )
         source_files.append("installer/chameleon.spec")
     with zipfile.ZipFile(
-        dist / "ChameleonAI-0.7.0-source.zip", "w", zipfile.ZIP_DEFLATED
+        dist / "ChameleonAI-0.7.1-source.zip", "w", zipfile.ZIP_DEFLATED
     ) as archive:
         for name in source_files:
             path = root / name
             if path.is_file():
                 archive.write(path, name)
     with zipfile.ZipFile(
-        dist / "ChameleonAI-0.7.0-windows-x64.zip", "w", zipfile.ZIP_DEFLATED
+        dist / "ChameleonAI-0.7.1-windows-x64.zip", "w", zipfile.ZIP_DEFLATED
     ) as archive:
         for path in sorted((dist / "Chameleon").rglob("*")):
             if path.is_file():
@@ -56,8 +56,8 @@ else:
         ):
             archive.write(root / name, name)
         archive.writestr(
-            "LEEME-PORTABLE.txt",
-            "Chameleon AI 0.7.0\n\nConserva la carpeta Chameleon completa.\nPara abrir el terminal: Chameleon\\ChameleonTerminal.exe\nPara instalar la integración CMD/PowerShell: Chameleon\\ChameleonSetup.exe\nSettings: Chameleon\\ChameleonSetup.exe settings\nOllama y qwen3:4b-instruct deben estar instalados para las consultas de IA.\nConsulta README.md y docs/INSTALLATION.md.\n",
+            "README-PORTABLE.txt",
+            "Chameleon AI 0.7.1\n\nKeep the complete Chameleon folder.\nOpen the terminal: Chameleon\\ChameleonTerminal.exe\nInstall CMD/PowerShell integration: Chameleon\\ChameleonSetup.exe\nSettings: Chameleon\\ChameleonSetup.exe settings\nOllama and the selected local model must be installed for AI requests.\nSee README.md and docs/INSTALLATION.md.\n",
         )
     sums = {}
     for path in dist.iterdir():

@@ -74,18 +74,18 @@ class SetupWindow(QMainWindow):
         brand.setObjectName("eyebrow")
         left.addWidget(brand)
         left.addSpacing(15)
-        headline = QLabel("Todo empieza\nen tu equipo.")
+        headline = QLabel("It starts\non your device.")
         headline.setStyleSheet("font-size:31px;font-weight:600;color:#edf3e7")
         left.addWidget(headline)
-        description = QLabel("Una terminal con IA local.\nEl control sigue siendo tuyo.")
+        description = QLabel("A terminal with local AI.\nYou stay in control.")
         description.setObjectName("muted")
         left.addWidget(description)
         left.addStretch()
         self.steps: list[QLabel] = []
         for number, step_title, step_note in (
-            ("01", "Tu terminal", "CMD y PowerShell"),
-            ("02", "Tu IA local", "Ollama y el modelo que elijas"),
-            ("03", "Todo listo", "Conexión verificada"),
+            ("01", "Your terminal", "CMD and PowerShell"),
+            ("02", "Your local AI", "Ollama and your chosen model"),
+            ("03", "All set", "Connection verified"),
         ):
             step = QLabel(number + "   " + step_title)
             step.setObjectName("setupStep")
@@ -109,13 +109,13 @@ class SetupWindow(QMainWindow):
         right = QVBoxLayout(right_body)
         right.setContentsMargins(1, 9, 9, 8)
         right.setSpacing(14)
-        eyebrow = QLabel("INSTALACIÓN LOCAL")
+        eyebrow = QLabel("LOCAL INSTALLATION")
         eyebrow.setObjectName("eyebrow")
         right.addWidget(eyebrow)
-        title = QLabel("Tu espacio, al día." if existing else "Prepara tu espacio.")
+        title = QLabel("Your workspace, up to date." if existing else "Set up your workspace.")
         title.setObjectName("heading")
         right.addWidget(title)
-        description = QLabel("Terminal e IA, listas para trabajar. Tus preferencias se conservan.")
+        description = QLabel("Your terminal and AI, ready to work. Your preferences are preserved.")
         description.setWordWrap(True)
         description.setObjectName("muted")
         right.addWidget(description)
@@ -125,7 +125,7 @@ class SetupWindow(QMainWindow):
         choices = QVBoxLayout(options)
         choices.setContentsMargins(20, 18, 20, 18)
         choices.setSpacing(8)
-        label = QLabel("Modelo local")
+        label = QLabel("Local model")
         label.setStyleSheet("font-weight:600;color:#d8e7d4")
         choices.addWidget(label)
         self.model_choice = QComboBox()
@@ -143,30 +143,30 @@ class SetupWindow(QMainWindow):
             lambda tag: size.setText(model_description(tag))
         )
         choices.addWidget(size)
-        self.model = QCheckBox("Preparar IA y comprobar la conexión")
+        self.model = QCheckBox("Prepare AI and verify the connection")
         self.model.setChecked(True)
         choices.addWidget(self.model)
-        self.ollama = QCheckBox("Permitir instalar Ollama oficial si falta")
+        self.ollama = QCheckBox("Allow official Ollama installation if missing")
         self.ollama.setChecked(False)
         self.ollama.setToolTip(
-            "Descarga desde ollama.com con firma verificada. Requiere tu consentimiento."
+            "Downloads from ollama.com with a verified signature. Requires your consent."
         )
         choices.addWidget(self.ollama)
-        self.desktop = QCheckBox("Crear acceso directo en el Escritorio")
+        self.desktop = QCheckBox("Create a desktop shortcut")
         self.desktop.setChecked(bool(previous.get("desktop_shortcut")))
         choices.addWidget(self.desktop)
         right.addWidget(options)
-        advanced_button = MotionButton("Opciones avanzadas  +")
+        advanced_button = MotionButton("Advanced options  +")
         advanced_button.setFlat(True)
         advanced_button.setCheckable(True)
         right.addWidget(advanced_button, 0, Qt.AlignmentFlag.AlignLeft)
         self.advanced = QWidget()
         advanced_layout = QVBoxLayout(self.advanced)
         advanced_layout.setContentsMargins(10, 0, 0, 0)
-        self.policy = QCheckBox("Permitir RemoteSigned para mi usuario si hace falta")
+        self.policy = QCheckBox("Allow RemoteSigned for my user if needed")
         self.policy.setChecked(False)
         self.policy.setToolTip(
-            "Sólo CurrentUser y con confirmación expresa. No cambia Group Policy."
+            "CurrentUser only, with explicit confirmation. Does not change Group Policy."
         )
         advanced_layout.addWidget(self.policy)
         self.advanced.hide()
@@ -174,16 +174,16 @@ class SetupWindow(QMainWindow):
         advanced_button.toggled.connect(self.advanced.setVisible)
         advanced_button.toggled.connect(
             lambda opened: advanced_button.setText(
-                "Opciones avanzadas  −" if opened else "Opciones avanzadas  +"
+                "Advanced options  −" if opened else "Advanced options  +"
             )
         )
-        self.dependencies = QLabel("Comprobando componentes…")
+        self.dependencies = QLabel("Checking components…")
         self.dependencies.setWordWrap(True)
         self.dependencies.setObjectName("muted")
         self.dependencies.setStyleSheet("font-size:11px;color:#92a992")
         right.addWidget(self.dependencies)
         self.state = StatusPill()
-        self.state.set_state("Preparado", "#b7d59b")
+        self.state.set_state("Ready", "#b7d59b")
         state_row = QHBoxLayout()
         state_row.addWidget(self.state)
         state_row.addStretch()
@@ -194,7 +194,7 @@ class SetupWindow(QMainWindow):
         self.progress_animation.setDuration(350 if motion_enabled() else 0)
         self.progress_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         right.addWidget(self.progress)
-        self.details_toggle = MotionButton("Ver detalles  +")
+        self.details_toggle = MotionButton("Show details  +")
         self.details_toggle.setFlat(True)
         self.details_toggle.setCheckable(True)
         right.addWidget(self.details_toggle, 0, Qt.AlignmentFlag.AlignLeft)
@@ -210,11 +210,11 @@ class SetupWindow(QMainWindow):
         self.details_toggle.toggled.connect(self.log.setVisible)
         self.details_toggle.toggled.connect(
             lambda opened: self.details_toggle.setText(
-                "Ocultar detalles  −" if opened else "Ver detalles  +"
+                "Hide details  −" if opened else "Show details  +"
             )
         )
         self.log.appendPlainText(
-            "La instalación verifica el terminal, Ollama y una respuesta real del modelo seleccionado."
+            "Setup verifies the terminal, Ollama and a real response from the selected model."
         )
         right.addStretch()
         scroll = QScrollArea()
@@ -229,17 +229,17 @@ class SetupWindow(QMainWindow):
         action_row.setContentsMargins(12, 12, 12, 12)
         action_row.setSpacing(8)
         if not existing:
-            scope_note = QLabel("Instalación local")
+            scope_note = QLabel("Local installation")
             scope_note.setStyleSheet("color:#a0b59a;font-size:11px;margin-left:9px")
             action_row.addWidget(scope_note)
         action_row.addStretch()
         self.buttons: list[QPushButton] = []
         primary_text = (
-            "Actualizar Chameleon"
+            "Update Chameleon"
             if needs_update
-            else "Abrir terminal"
+            else "Open terminal"
             if existing
-            else "Instalar Chameleon"
+            else "Install Chameleon"
         )
         self.primary_button = MotionButton(primary_text, primary=True)
         self.primary_button.setMinimumWidth(210)
@@ -249,24 +249,24 @@ class SetupWindow(QMainWindow):
         self.buttons.append(self.primary_button)
         action_row.addWidget(self.primary_button)
         if existing:
-            repair = MotionButton("Abrir terminal" if needs_update else "Reparar")
+            repair = MotionButton("Open terminal" if needs_update else "Repair")
             repair.clicked.connect(self.open_terminal if needs_update else self.start_install)
             self.buttons.append(repair)
             action_row.addWidget(repair)
         more = MotionButton("···")
         more.setFixedWidth(46)
-        more.setAccessibleName("Más opciones")
+        more.setAccessibleName("More options")
         menu = QMenu(more)
-        menu.addAction("Ajustes", self.settings)
+        menu.addAction("Settings", self.settings)
         if existing:
-            menu.addAction("Reparar instalación", self.start_install)
+            menu.addAction("Repair installation", self.start_install)
             menu.addSeparator()
-            menu.addAction("Desinstalar…", self.uninstall)
+            menu.addAction("Uninstall…", self.uninstall)
         more.clicked.connect(lambda: menu.exec(more.mapToGlobal(more.rect().topLeft())))
         action_row.addWidget(more)
         self.buttons.append(more)
         right_pane.addWidget(dock)
-        note = QLabel("Sin cuenta. Sin suscripción. En tu ordenador.")
+        note = QLabel("No account. No subscription. On your device.")
         note.setStyleSheet("color:#7f9980;font-size:10px;padding-left:8px")
         right_pane.addWidget(note)
         outer.addLayout(right_pane, 1)
@@ -279,14 +279,14 @@ class SetupWindow(QMainWindow):
         self.elapsed_timer.setInterval(1000)
         self.elapsed_timer.timeout.connect(
             lambda: self.state.set_state(
-                f"Preparando · {int(time.monotonic() - self.started)} s", "#b8d79e", True
+                f"Preparing · {int(time.monotonic() - self.started)} s", "#b8d79e", True
             )
         )
 
     def on_progress(self, message: str) -> None:
         self.log.appendPlainText(message)
-        if message.startswith("COMPONENTES:"):
-            self.dependencies.setText(message.removeprefix("COMPONENTES: "))
+        if message.startswith("COMPONENTS:"):
+            self.dependencies.setText(message.removeprefix("COMPONENTS: "))
             return
         phase = (
             2
@@ -324,13 +324,13 @@ class SetupWindow(QMainWindow):
             if revision != self._dependency_revision:
                 return
             self.signals.progress.emit(
-                "COMPONENTES: Ollama "
-                + ("instalado" if executable else "sin ejecutable local")
-                + " · servicio "
-                + ("activo" if online else "detenido")
+                "COMPONENTS: Ollama "
+                + ("installed" if executable else "no local executable")
+                + " · service "
+                + ("active" if online else "stopped")
                 + " · "
                 + config.ai.model
-                + (" descargado" if model else " pendiente de comprobar/descargar")
+                + (" downloaded" if model else " awaiting verification/download")
             )
 
         threading.Thread(target=worker, daemon=True, name="Dependency check").start()
@@ -340,7 +340,7 @@ class SetupWindow(QMainWindow):
         if executable.exists():
             launch([str(executable)], creationflags=0x08000000)
         else:
-            QMessageBox.warning(self, "Chameleon", "Ejecuta Install o Repair primero.")
+            QMessageBox.warning(self, "Chameleon", "Run Install or Repair first.")
 
     def settings(self) -> None:
         from chameleon.setup.settings import SettingsDialog
@@ -360,8 +360,8 @@ class SetupWindow(QMainWindow):
             if (
                 QMessageBox.question(
                     self,
-                    "Software externo",
-                    "Para preparar la IA falta Ollama. ¿Instalarlo desde ollama.com con firma verificada y preparar el modelo seleccionado si falta?",
+                    "External software",
+                    "Ollama is required to prepare AI. Install it from ollama.com with a verified signature and prepare the selected model if missing?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
                 )
@@ -374,7 +374,7 @@ class SetupWindow(QMainWindow):
                 QMessageBox.question(
                     self,
                     "Execution Policy",
-                    "¿Cambiar CurrentUser a RemoteSigned si es necesario? No se modifica Group Policy.",
+                    "Change CurrentUser to RemoteSigned if needed? Group Policy will not be changed.",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
                 )
@@ -382,7 +382,7 @@ class SetupWindow(QMainWindow):
             ):
                 return
         self.progress.setRange(0, 0)
-        self.state.set_state("Instalando…", "#b5d498", True)
+        self.state.set_state("Installing…", "#b5d498", True)
         self.busy = True
         self.model_choice.setEnabled(False)
         self.started = time.monotonic()
@@ -419,30 +419,30 @@ class SetupWindow(QMainWindow):
         self.log.appendPlainText(message)
         self.check_dependencies()
         self.state.set_state(
-            "IA pendiente" if "necesita atención" in message else "Instalación completada",
-            "#e6c275" if "necesita atención" in message else "#b5d498",
+            "AI pending" if "needs attention" in message else "Installation complete",
+            "#e6c275" if "needs attention" in message else "#b5d498",
         )
         for option in (self.ollama, self.model, self.policy, self.desktop):
             option.setEnabled(True)
         for button in self.buttons:
             button.setEnabled(True)
         if (self.root / "core/ChameleonTerminal.exe").is_file() and self.primary_button.text() in (
-            "Instalar Chameleon",
-            "Actualizar Chameleon",
+            "Install Chameleon",
+            "Update Chameleon",
         ):
             self.primary_button.clicked.disconnect()
             self.primary_button.clicked.connect(self.open_terminal)
-            self.primary_button.setText("Abrir mi terminal")
+            self.primary_button.setText("Open my terminal")
 
     def failed(self, message: str) -> None:
-        self.finished("Error: " + message + "\nPuedes volver a ejecutar Reparar.")
-        self.state.set_state("No se completó la instalación", "#ef9797")
+        self.finished("Error: " + message + "\nYou can run Repair again.")
+        self.state.set_state("Installation did not finish", "#ef9797")
         self.details_toggle.setChecked(True)
         self.progress.setValue(0)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.busy:
-            self.log.appendPlainText("Espera a que finalice la instalación antes de cerrar Setup.")
+            self.log.appendPlainText("Wait for installation to finish before closing Setup.")
             event.ignore()
         else:
             event.accept()
@@ -451,8 +451,8 @@ class SetupWindow(QMainWindow):
         if (
             QMessageBox.question(
                 self,
-                "Desinstalar",
-                "¿Eliminar Chameleon, su configuración e integración? Se conservarán tus perfiles y otras entradas PATH.",
+                "Uninstall",
+                "Remove Chameleon, its configuration and shell integration? Your profiles and other PATH entries will be preserved.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -466,8 +466,8 @@ class SetupWindow(QMainWindow):
                 if (
                     QMessageBox.question(
                         self,
-                        "Modelo local",
-                        "¿Eliminar también el modelo descargado por Chameleon?",
+                        "Local model",
+                        "Also remove the model downloaded by Chameleon?",
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                         QMessageBox.StandardButton.No,
                     )
@@ -481,7 +481,7 @@ class SetupWindow(QMainWindow):
                     QMessageBox.question(
                         self,
                         "Ollama",
-                        "¿Abrir el desinstalador oficial de Ollama? Otros modelos no se eliminarán por Chameleon.",
+                        "Open the official Ollama uninstaller? Chameleon will not remove other models.",
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                         QMessageBox.StandardButton.No,
                     )
@@ -497,7 +497,7 @@ class SetupWindow(QMainWindow):
                     QMessageBox.question(
                         self,
                         "Execution Policy",
-                        "¿Restaurar la política CurrentUser anterior registrada durante Setup?",
+                        "Restore the previous CurrentUser policy recorded during Setup?",
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                         QMessageBox.StandardButton.No,
                     )
@@ -525,7 +525,7 @@ class SetupWindow(QMainWindow):
             remove_installation(self.root, delayed=True)
             self.close()
         except (OSError, ValueError) as exc:
-            QMessageBox.critical(self, "Desinstalación", str(exc))
+            QMessageBox.critical(self, "Uninstall", str(exc))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -553,9 +553,9 @@ def main(argv: list[str] | None = None) -> int:
             preparing = SetupWindow(current)
             preparing.busy = True
             preparing.progress.setRange(0, 0)
-            preparing.state.set_state("Preparando Reparar…", "#b5d498", True)
+            preparing.state.set_state("Preparing Repair…", "#b5d498", True)
             preparing.log.appendPlainText(
-                "Preparando una copia temporal para actualizar los archivos en uso. La ventana seguirá respondiendo."
+                "Preparing a temporary copy to update files in use. The window will remain responsive."
             )
             for control in (
                 *preparing.buttons,
@@ -592,7 +592,7 @@ def main(argv: list[str] | None = None) -> int:
             def copy_runtime() -> None:
                 try:
                     shutil.copytree(current, temp, dirs_exist_ok=True)
-                    relocation.done.emit("Preparado")
+                    relocation.done.emit("Ready")
                 except OSError as exc:
                     relocation.failed.emit(str(exc))
 

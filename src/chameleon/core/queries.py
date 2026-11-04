@@ -10,7 +10,7 @@ from chameleon.core.schemas import Action
 def file_query(action: Action, cwd: Path) -> Iterator[Path]:
     root = (cwd / action.path).resolve() if action.path else cwd
     if not root.is_dir():
-        raise ValueError("El directorio de búsqueda no existe")
+        raise ValueError("The search directory does not exist")
     # Walk without following directory symlinks/junctions; protects from loops.
     if action.recursive or action.kind == "find":
 

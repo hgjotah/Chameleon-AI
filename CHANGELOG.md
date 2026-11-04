@@ -1,81 +1,92 @@
 # Changelog
 
+## 0.7.1 · 2026-11-04
+
+- English application UI, installer, Settings, CLI help, model selector, command previews, diagnostics and app-authored messages.
+- English README and remaining project documentation. English and Spanish requests, literal user data, command names and permissions retain their existing behavior.
+
+## 0.7.0 · 2026-11-02
+
+- Version/model information, complete CLI help and a persistent downloaded-model selector with arrow-key navigation.
+- Explicit `--try` previews with Cancel selected initially, including Full access; native execution preserves parent-shell state.
+- `--models`, `--force-model`, and backward-compatible `--model <request>` behavior. Console modes and cursor visibility are restored after selection/cancellation.
+
 ## 0.6.0 · 2026-11-02
 
-- Nueva interfaz en verdes bosque, musgo y salvia: superficies mate, menos controles simultáneos y vidrio reservado para las barras de acciones. Se conserva el logo original.
-- Corregido el resplandor espectral del material que añadía colores ajenos a la paleta; refracción y bisel proporcionales a la resolución de caché, iluminación localizada y bordes más claros.
-- Botones con desplazamiento magnético, contramovimiento del texto, luz radial y presión reversible. Adaptaciones nativas de código MIT de Codrops y Motion Primitives, con fuentes, revisiones y licencias incluidas.
-- El panel «IA y permisos» aparece bajo demanda con transición; no cambia las dimensiones del PTY y devuelve el foco al terminal al cerrarse. Escape cierra el panel.
-- Setup simplificado: opciones avanzadas y registro desplegables, estado compacto y actualización explícita cuando hay una versión anterior. Ajustes con navegación y permisos personalizados progresivos.
-- Animaciones detenidas en reposo y al ocultar controles; respeto de la preferencia de movimiento reducido de Windows. Comprobaciones de instalación nueva y actualización en procesos Qt aislados.
-- Se mantienen los modelos, permisos, comandos y configuración existentes.
+- New forest, moss and sage interface: matte surfaces, fewer simultaneous controls and glass reserved for action bars. Original logo preserved.
+- Fixed material spectral glow introducing unwanted colors; cache-scaled refraction/bevel, localized lighting and clearer edges.
+- Magnetic buttons, text counter-motion, radial lighting and reversible press effects. Native adaptations of MIT Codrops and Motion Primitives code, with original sources, revisions and licenses.
+- On-demand AI and permissions panel with transitions; PTY dimensions remain stable and terminal focus returns on close. Escape closes the panel.
+- Simplified Setup: expandable advanced options/log, compact status and explicit update action for older versions. Settings navigation and progressive custom permissions.
+- Animations stop at rest and when hidden; Windows reduced-motion preference respected. Fresh-install/update checks run in isolated Qt processes.
+- Existing models, permissions, commands and configuration preserved.
 
 ## 0.5.1 · 2026-11-01
 
-- Fundamentación en el sistema real: versión/edición/lenguaje del shell, ruta del ejecutable, arquitectura, idioma, carpetas conocidas redirigidas y variables permitidas; contexto seleccionado según la petición.
-- PowerShell 7 se identifica correctamente también desde el wrapper. Los alias/funciones relevantes y el modo de lenguaje del shell llamante se transmiten sin enviar sus cuerpos.
-- Consulta de ayuda nativa de Windows y metadatos/AST de PowerShell para revisar operación, parámetros, sintaxis y valores de propiedades antes de proponer la ejecución. La propuesta nunca se ejecuta durante esta inspección.
-- Eliminados los pares de órdenes/respuestas del prompt. El modelo elige el comando; la aplicación aporta observaciones y errores nativos para corregirlo.
-- Validación de operandos, comillas, contenido literal y tipo de operación en las tareas simples verificadas; rechazo de nombres inventados, rutas devueltas como texto y palabras de la petición usadas como argumentos.
-- Lecturas de propiedades de sesión y cambios de apariencia limitados a sus permisos correspondientes, sin exigir acceso arbitrario a scripts.
-- Los nombres ambiguos y destinos existentes se resuelven antes de llamar al modelo. La creación de contexto nativo ocurre fuera del hilo de interfaz.
-- Normalización de un único delimitador de código; se siguen rechazando prosa y múltiples líneas.
+- Grounding in the actual system: shell version/edition/language, executable path, architecture, locale, redirected known folders and allowlisted variables; request-relevant context selection.
+- PowerShell 7 correctly identified through the wrapper. Relevant caller aliases/functions and language mode are transmitted without function bodies.
+- Native Windows help and PowerShell metadata/AST review operation, parameters, syntax and property values before execution is proposed. Inspection never runs the proposal.
+- Removed task/answer pairs from the prompt. The model chooses the command; the application supplies actual observations and native errors for correction.
+- Verified simple tasks validate operands, quoting, literal content and operation type; invented names, bare paths and request words used as arguments are rejected.
+- Session-property reads and appearance changes use their corresponding permissions without requiring arbitrary script access.
+- Ambiguous names and existing destinations are resolved before model invocation. Native context collection runs outside the UI thread.
+- One whole-response code delimiter is normalized; prose and multiple lines remain rejected.
 
 ## 0.5.0 · 2026-10-31
 
-- Cinco perfiles de acceso: Solo lectura, Equilibrado, Desarrollador, Personalizado y Acceso total sin bloqueos/confirmaciones de aplicación.
-- Permisos independientes de lectura, escritura, borrado, comandos, scripts, red, sistema y confirmaciones. Los scripts arbitrarios requieren todos los permisos de efectos; Windows conserva su autoridad sobre privilegios y ACL.
-- Selección de qwen3:4b-instruct y qwen2.5:0.5b en Setup/Ajustes/Terminal; preparación, descarga y prueba del modelo seleccionado.
-- Salida predeterminada de un único comando nativo, sin prosa/JSON/Markdown; ejemplos específicos por shell, contexto de rutas literal y reintento ante cmdlets inexistentes o fuentes inventadas.
-- Planificador estructurado anterior disponible al desactivar «Responder sólo con el comando».
-- Interfaz de vidrio con refracción real basada en módulos MIT de PyGlass, adaptación PySide6 y NumPy; licencia/revisión atribuidas, caché acotada y sin captura del escritorio.
-- Cambio de modelo/perfil cancela una consulta en curso; la generación usa una instantánea de la configuración.
-- Puente CMD adapta llamadas a .cmd/.bat y variables FOR al contexto batch transitorio.
+- Five access profiles: Read only, Balanced, Developer, Custom and Full access without application blocks/confirmations.
+- Separate read, write, delete, command, script, network, system and confirmation controls. Arbitrary scripts require all effect permissions; Windows retains authority over privileges and ACLs.
+- qwen3:4b-instruct and qwen2.5:0.5b selection in Setup/Settings/Terminal; preparation, download and selected-model testing.
+- Default output is a single native command without prose/JSON/Markdown; shell-specific examples, literal path context and retries for unknown cmdlets or invented sources.
+- Previous structured planner available by disabling Respond with the command only.
+- Real glass refraction based on MIT PyGlass modules, adapted to PySide6/NumPy; pinned attribution/license, bounded cache and no desktop capture.
+- Changing model/profile cancels active requests; generation uses a configuration snapshot.
+- CMD bridge adapts .cmd/.bat calls and FOR variables for transient batch execution.
 
 ## 0.4.0 · 2026-10-11
 
-- Integración Ollama con streaming, progreso real de recepción y rechazo de respuestas interrumpidas o truncadas; cancelación conserva el control del terminal.
-- Inicio automático del servidor local cuando Ollama ya está instalado pero detenido; se comprueba el puerto antes de lanzar otro servidor.
-- Hilos de CPU configurables (4 por defecto), eliminación del esquema duplicado en el prompt y respuestas breves para reducir el tiempo de inferencia.
-- Resúmenes con ruta explícita: lectura real previa y una sola llamada al modelo; las consultas ambiguas mantienen el flujo de inspección.
-- Operaciones simples forzadas a Qwen limitan el esquema a la acción correspondiente, evitando comandos inexistentes como `create`.
-- Las consultas directas de archivos/procesos generan salida nativa; cualquier otra inspección entra en la fase de respuesta, también con frases fuera de las reglas iniciales.
-- Setup muestra el ejecutable de Ollama, el servidor y el modelo por separado; preparar IA instala el backend ausente con consentimiento, descarga el modelo y exige una inferencia real.
-- Porcentajes de descarga reales, panel de opciones desplazable y diagnóstico del ejecutable de Ollama; los errores de descarga no ocultan que el terminal ya está instalado.
-- Instalación por CLI con opciones explícitas para Ollama/modelo y código de salida 3 cuando queda IA pendiente.
-- Nueva imagen exacta aportada por el usuario en todas las superficies, iconos y accesos directos; lanzadores utilizan el runtime independiente cuando está construido.
-- Puente Qt registrado antes de cargar el renderizador: elimina el registro tardío y la recarga inicial; el lector del terminal espera al cliente preparado.
+- Streaming Ollama integration, actual receive progress and rejection of interrupted/truncated responses; cancellation preserves terminal control.
+- Automatic local server startup when Ollama is installed but stopped; port checked before launching another server.
+- Configurable CPU threads (4 by default), duplicate schema removed from the prompt and concise responses to reduce inference time.
+- Summaries with explicit paths perform a real read before a single model call; ambiguous queries retain inspection flow.
+- Simple operations forced through Qwen restrict the schema to the relevant action, avoiding nonexistent commands such as `create`.
+- Direct file/process queries produce native output; other inspection enters the answer phase, including requests outside initial rules.
+- Setup distinguishes Ollama executable, server and model; AI preparation installs a missing backend with consent, downloads the model and requires actual inference.
+- Real download percentages, scrollable options and Ollama executable diagnostics; download failures do not conceal successful terminal installation.
+- CLI installation with explicit Ollama/model options and exit code 3 when AI remains pending.
+- Exact new user-provided image across surfaces, icons and shortcuts; development launchers use the standalone runtime when built.
+- Qt bridge registered before renderer loading; removes late registration/initial reload and waits for the client before reading terminal output.
 
 ## 0.3.0 · 2026-10-11
 
-- Logo aportado por el usuario: PNG original en Terminal, Setup, Settings, bootstrap, iconos Windows y accesos directos.
-- Borrado «un archivo en Downloads llamado Prueba.txt» y nombres sin extensión; los candidatos ambiguos requieren selección explícita.
-- Subrutas de carpetas conocidas y Descargas redirigidas se resuelven contra sus ubicaciones reales.
-- Inspecciones de solo lectura para fundamentar respuestas en archivos y procesos reales; límites explícitos, redacción de secretos y lectura UTF-16 con BOM.
-- Origen visible con llamadas, tokens, modelo y duración reales; selector Automático/Qwen y opción CLI `--model`.
-- Cierre explícito de la ronda de herramientas y resúmenes acotados para evitar lecturas repetidas y explicaciones largas antes de actuar.
-- Setup y Terminal rediseñados con panel de respuesta, jerarquía tipográfica, tarjetas, controles y transiciones; apertura del terminal tras instalar.
-- Actualización por usuario desde el Core congelado conservando preferencias, perfiles y PATH.
-- Permisos del runtime aplicados antes de crear staging y backup, evitando el timeout encontrado en una actualización real; error de permisos con diagnóstico específico.
+- User-provided logo: original PNG in Terminal, Setup, Settings, bootstrap, Windows icons and shortcuts.
+- Deletion requests support named files in Downloads and extensionless names; ambiguous candidates require explicit selection.
+- Known-folder subpaths and redirected Downloads resolve to actual locations.
+- Read-only inspection grounds answers in real files/processes; explicit limits, secret redaction and UTF-16 BOM reading.
+- Visible source with actual calls, tokens, model and duration; Automatic/Qwen selector and CLI `--model` option.
+- Explicit tool-round closure and bounded summaries prevent repeated inspection and lengthy explanations before action.
+- Redesigned Setup/Terminal with response panel, typography, cards, controls and transitions; terminal launch after installation.
+- Per-user update through frozen Core preserves preferences, profiles and PATH.
+- Runtime permissions applied before staging/backup creation, avoiding an observed update timeout; specific permission diagnostics.
 
 ## 0.2.0 · 2026-10-10
 
-- Creación literal de archivos UTF-8 y carpetas; copia y movimiento sin sobrescritura, compartidos por CMD, PowerShell y GUI. Lectura UTF-8 explícita también en PowerShell 5.1.
-- Aclaraciones conservan la operación solicitada; los permisos administrativos se calculan independientemente de las sugerencias del modelo.
-- Actualización a pywinpty 3.0.5, que incorpora el cierre de ConPTY mediante eventos y corrige el bucle de CPU de la versión anterior; comprobación explícita de sus tres binarios nativos.
-- Arranque de PowerShell con sus módulos correctos aunque el proceso padre sea PowerShell 7; Doctor deja de marcar políticas desconocidas como correctas.
-- Reparación con recuperación de binarios, perfiles, configuración, PATH y registro ante errores antes de confirmar el manifiesto; hashes y manifiesto atómico.
-- El lanzador de desarrollo usa el instalador independiente para evitar la redirección privada de AppData/registro de Python de Microsoft Store.
-- Prueba mínima de inferencia; errores de IA se notifican por separado de una instalación correcta del terminal.
-- Interfaz nativa renovada: terminal con selector de shell, sesiones, guía, ruta y actividad; instalador con estados; ajustes con navegación lateral; botones y transiciones animados.
-- Entrada sincronizada con el editor nativo para evitar texto truncado al pulsar Enter; las repeticiones de títulos de ConPTY no activan IA dentro de programas interactivos.
-- Pruebas de creación con contenido Unicode y símbolos en el terminal real, en los wrappers de tres shells y en los ejecutables distribuidos.
+- Literal UTF-8 file/folder creation; copy/move without overwriting, shared across CMD, PowerShell and GUI. Explicit UTF-8 reads in PowerShell 5.1.
+- Clarifications retain the requested operation; administrative requirements are assessed independently of model suggestions.
+- Updated pywinpty to 3.0.5, with event-driven ConPTY shutdown and a fix for the previous CPU loop; all three native binaries explicitly checked.
+- PowerShell starts with correct modules even when its parent is PowerShell 7; Doctor no longer reports unknown policies as successful.
+- Repair restores binaries, profiles, config, PATH and registry on failure before manifest commit; hashes and atomic manifest.
+- Development launcher uses the standalone installer to avoid Microsoft Store Python's private AppData/registry redirection.
+- Minimal inference probe; AI failures reported separately from successful terminal installation.
+- Renewed native UI: shell/session/guide/path/activity controls, installer states, Settings navigation, animated buttons and transitions.
+- Input synchronized with the native editor to prevent Enter truncation; repeated ConPTY titles do not activate AI inside interactive programs.
+- Creation tests with Unicode content and symbols in the real terminal, three shell wrappers and distributed executables.
 
 ## 0.1.0 · 2026-10-10
 
-- Core híbrido español/inglés, Ollama local con JSON Schema y validación Pydantic.
-- Integraciones CMD y Windows PowerShell/PowerShell 7 con estado de sesión.
-- Motor de riesgo independiente, confirmación por defecto negativa y bloqueo permanente.
-- Terminal ConPTY con xterm.js local, prompt markers, modos AI y raw, Settings.
-- Setup por usuario, Repair, Update y Uninstall, gestión consentida de Ollama y políticas.
-- Build Windows autocontenido, tests pytest, ruff, mypy y GitHub Actions.
+- Hybrid English/Spanish core, local Ollama with JSON Schema and Pydantic validation.
+- CMD and Windows PowerShell/PowerShell 7 integration preserving session state.
+- Independent risk engine, default-negative confirmation and permanent blocking.
+- ConPTY terminal with local xterm.js, prompt markers, AI/raw modes and Settings.
+- Per-user Setup, Repair, Update and Uninstall; consent-based Ollama/policy management.
+- Self-contained Windows build, pytest, ruff, mypy and GitHub Actions.

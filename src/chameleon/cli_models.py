@@ -22,10 +22,10 @@ async def installed_models(transport: httpx.AsyncBaseTransport | None = None) ->
             response.raise_for_status()
             payload = response.json()
             if not isinstance(payload, dict):
-                raise ValueError("Respuesta de Ollama inválida")
+                raise ValueError("Invalid Ollama response")
             models = payload["models"]
             if not isinstance(models, list):
-                raise ValueError("Lista de modelos inválida")
+                raise ValueError("Invalid model list")
             tags = set()
             for model in models:
                 if not isinstance(model, dict):
@@ -43,30 +43,28 @@ async def installed_models(transport: httpx.AsyncBaseTransport | None = None) ->
             return sorted(tags, key=lambda tag: (tag not in MODELS, tag.casefold()))
     except (httpx.HTTPError, ValueError, KeyError) as exc:
         raise ProviderError(
-            "No se pudo consultar la lista de Ollama local (127.0.0.1:11434). "
-            "Abre Ollama o prepara la IA en Setup y vuelve a intentarlo. "
-            "No se cambió el modelo."
+            "Could not retrieve the local Ollama model list (127.0.0.1:11434). Open Ollama or prepare AI in Setup and try again. The model was not changed."
         ) from exc
 
 
 async def change_model(root: Path, config: Config, tag: str, output: Callable[[str], None]) -> int:
     tags = await installed_models()
     if not tags:
-        output("No hay modelos locales descargados. Prepáralos en Setup o Ajustes → IA local.")
+        output("No local models are downloaded. Prepare them in Setup or Settings → Local AI.")
         return 1
     if not tag:
         selected = select(
-            "CHAMELEON · CAMBIAR MODELO",
-            [Choice(name, "ACTUAL" if name == config.ai.model else model_description(name)) for name in tags],
+            "CHAMELEON · CHANGE MODEL",
+            [Choice(name, "CURRENT" if name == config.ai.model else model_description(name)) for name in tags],
             tags.index(config.ai.model) if config.ai.model in tags else 0,
-            "Modelos descargados en Ollama. El cambio se guarda para las próximas peticiones.",
+            "Models downloaded in Ollama. Your selection is saved for future requests.",
         )
         if selected is None:
-            output("Cancelado. El modelo no ha cambiado.")
+            output("Cancelled. The model has not changed.")
             return 1
         tag = tags[selected]
     if tag not in tags:
-        output(f"El modelo {tag!r} no está descargado. Consulta chameleon ai --models.")
+        output(f"The model {tag!r} is not downloaded. Run chameleon ai --models.")
         return 1
     candidate = config.ai.model_copy(deep=True)
     candidate.model = tag
@@ -75,7 +73,7 @@ async def change_model(root: Path, config: Config, tag: str, output: Callable[[s
         async with provider.client() as client:
             await provider.local_metadata(client)
     except (httpx.HTTPError, ValueError, TypeError, AttributeError) as exc:
-        raise ProviderError("No se pudo verificar el modelo local. No se cambió la selección.") from exc
+        raise ProviderError("Could not verify the local model. The selection was not changed.") from exc
     # Reload after interaction/network IO: preserve settings changed meanwhile.
     current, warning = load_config(root)
     if warning:
@@ -83,6 +81,6 @@ async def change_model(root: Path, config: Config, tag: str, output: Callable[[s
         return 1
     current.ai.model = tag
     save_config(current, root)
-    output(f"Modelo seleccionado: {tag}")
-    output("Guardado para las próximas peticiones de CLI y nuevas ventanas del terminal.")
+    output(f"Selected model: {tag}")
+    output("Saved for future CLI requests and new terminal windows.")
     return 0

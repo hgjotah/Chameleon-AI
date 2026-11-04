@@ -17,7 +17,7 @@ def validate_target(path: Path) -> None:
             or part.endswith((" ", "."))
             or re.fullmatch(r"(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?", part, re.I)
         ):
-            raise ValueError(f"Nombre de archivo no válido en Windows: {part}")
+            raise ValueError(f"Invalid Windows filename: {part}")
 
 
 def apply_file_action(action: Action) -> str:
@@ -25,19 +25,19 @@ def apply_file_action(action: Action) -> str:
     validate_target(source)
     if action.kind == "mkdir":
         source.mkdir(parents=True, exist_ok=False)
-        return f"Carpeta creada: {source}"
+        return f"Folder created: {source}"
     target = Path(action.destination).resolve() if action.destination else source
     validate_target(target)
     if not target.parent.is_dir():
-        raise FileNotFoundError(f"La carpeta de destino no existe: {target.parent}. Crea primero la carpeta o elige otra ruta.")
+        raise FileNotFoundError(f"The destination folder does not exist: {target.parent}. Create the folder first or choose another path.")
     if action.kind == "create":
         with source.open("x", encoding="utf-8", newline="") as stream:
             stream.write(action.content)
-        return f"Archivo creado: {source}"
+        return f"File created: {source}"
     if action.kind not in ("copy", "move"):
-        raise ValueError("Operación de archivo no admitida")
+        raise ValueError("Unsupported file operation")
     if not source.is_file():
-        raise ValueError(f"El origen debe ser un archivo existente: {source}")
+        raise ValueError(f"The source must be an existing file: {source}")
     # Exclusive creation guarantees that a destination appearing after approval
     # cannot be overwritten. Delete only our own incomplete copy on failure.
     with target.open("xb") as output:
@@ -50,4 +50,4 @@ def apply_file_action(action: Action) -> str:
             raise
     if action.kind == "move":
         source.unlink()
-    return f"Archivo {'movido' if action.kind == 'move' else 'copiado'}: {target}"
+    return f"File {"moved" if action.kind == 'move' else "copied"}: {target}"

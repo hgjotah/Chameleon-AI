@@ -1,63 +1,63 @@
-# Correspondencia con el documento de requisitos
+# Requirements coverage
 
-Esta tabla permite localizar la implementación de los 55 apartados. La evidencia ejecutada y las pruebas manuales pendientes se distinguen en [VALIDATION.md](VALIDATION.md); la existencia de una función no equivale a certificar todas las versiones de Windows o todos los programas interactivos.
+This table locates the implementation of all 55 sections of the requirements document. Executed evidence and outstanding manual checks are distinguished in [VALIDATION.md](VALIDATION.md); a function's existence does not certify every Windows version or interactive program.
 
-| Apartado | Implementación / documentación |
+| Section | Implementation / documentation |
 |---|---|
-| 1 · Asistente en la sesión actual | CLI, wrapper CMD y módulo PowerShell; tests reales del cwd padre |
-| 2 · Terminal gráfica real | `terminal/`, `platform/windows/conpty.py`, xterm local |
-| 3 · Python moderno | Python 3.13, Pydantic, PySide6; `pyproject.toml` |
-| 4 · IA local | `llm/ollama.py`, modelo exacto `qwen3:4b-instruct` |
-| 5 · Reglas sin IA | `core/intents.py`, navegación y consultas inequívocas |
-| 6 · Comandos normales | Clasificación de builtins, PATH, scripts y aliases; entrada directa |
-| 7 · CMD | `assets/shell/chameleon.cmd`, protocolo de acción temporal; sin AutoRun |
-| 8 · PowerShell | `Chameleon.psm1`, perfiles descubiertos y bloque marcado |
-| 9 · Administrador | Token heredado, comprobación de privilegios; sin elevación automática |
-| 10 · Respuesta estructurada | `core/schemas.py`, acciones tipadas y validación antes de ejecutar |
-| 11 · System prompt | `llm/prompts.py`, esquema contextual y sin pensamiento visible |
-| 12 · Contexto | `core/context.py`; contexto limitado y redactado |
-| 13 · Sesiones | `core/sessions.py`; PID + fecha de creación + caducidad |
-| 14 · Privacidad | Historial optativo, redacción; PRIVACY.md |
-| 15 · Safety Engine | `safety/engine.py`; SAFE / CONFIRM / BLOCKED independientes del modelo |
-| 16 · Ambigüedad | Plan `clarify`, elección en CLI y GUI, cancelación segura |
-| 17 · Visibilidad | Ocultación habitual, `--show`, `--dry-run`, vista de confirmación |
-| 18 · Comportamiento GUI | Puente Qt, editor nativo, clasificación solo en prompt |
-| 19 · Interactivos | Marcador OSC autenticado en shell hijo; entrada raw en REPL/TUI |
-| 20 · Shell seleccionable | CMD predeterminado, Windows PowerShell y PowerShell 7 |
-| 21 · Estética | Negro/verde, tipografía del sistema, barra discreta y estado de IA |
-| 22 · Render | xterm 5.5, ANSI, selección, clipboard, scrollback, resize, zoom y F11 |
-| 23 · Latencia | Reglas locales, worker de IA, indicador PROCESSING y keep-alive |
-| 24 · Ollama | Setup, firma oficial, progreso de descarga y prueba de inferencia |
-| 25 · Offline | Transporte de inferencia solo loopback; procedimiento de VM en VALIDATION.md |
-| 26 · Installer | Setup autocontenido, instalación por usuario, PATH y shortcuts |
-| 27 · Repair | Recopia/verificación del payload, integración y comprobación de IA |
-| 28 · Uninstall | Manifest de propiedad; conserva perfil/PATH ajenos; extras con consentimiento |
-| 29 · Settings | General, AI, Terminal, Safety y Privacy; validación y guardado atómico |
-| 30 · Doctor | `setup/doctor.py`, CLI `chameleon doctor` |
-| 31 · Multiplataforma | Interfaces PlatformAdapter, ShellAdapter, PtyBackend; Linux reservado |
-| 32 · Repositorio | `src/chameleon`, `tests`, `scripts`, `installer`, `docs`, `.github` |
-| 33 · Tests | Parser, quoting, riesgo, rutas, modelo, sesiones e instalación |
-| 34 · Integración real | `test_windows_shells.py`, CMD / PS 5.1 / PS 7 reales |
-| 35 · Terminal tests | ConPTY y GUI reales; matriz de pruebas manuales pendiente documentada |
-| 36 · Errores | Diagnósticos accionables y planes inválidos sin ejecución |
-| 37 · Logging | Rotación limitada; sin guardar prompts/salida normal por defecto |
-| 38 · Configuración | TOML por usuario, valores tipados y recuperación con backup |
-| 39 · Actualizaciones | Versión semántica, Setup Update sobre payload de nueva release |
-| 40 · Documentación | README, ARCHITECTURE, BUILDING, INSTALLATION, integración, seguridad y privacidad |
-| 41 · Build | `scripts/build.ps1`, dependencias fijadas, verificación de código/payload congelado |
-| 42 · CI | GitHub Actions Windows; lint, tipos, tests, build y smoke de ejecutables |
-| 43 · Calidad | Ruff, mypy, módulos separados, interfaces y workers |
-| 44 · Temporales | Nombres aleatorios, ACL privada, escritura exclusiva, caducidad y limpieza |
-| 45 · Protocolo | Token ASCII por archivo exclusivo; wrapper nunca interpreta texto del modelo |
-| 46 · Cancelación | Cancelación asyncio desde Ctrl+C; test de carrera antes de crear el loop |
-| 47 · Modelo ausente | AI OFFLINE; shell y reglas locales siguen disponibles |
-| 48 · Rutas de usuario | Windows Known Folders y APIs de Windows; sin usuario fijo |
-| 49 · Idiomas | Peticiones español/inglés; UI inicial española, preferencia preparada para i18n |
-| 50 · Casos de uso | Navegación, PDF, confirmación, ambigüedad, búsqueda por tamaño y REPL |
-| 51 · Exclusiones | Sin cloud, claves, telemetría, chat lateral, shell falso ni Python obligatorio en destino |
-| 52 · Criterios | Build y pruebas reales de componentes; límites de certificación en VALIDATION.md |
-| 53 · Fases | Investigación, core, integración, IA, seguridad, GUI, Setup y distribución |
-| 54 · Revisión | Lint, tipos, tests, ejecutables y detección/corrección de fallos de empaquetado |
-| 55 · Entrega | Fuente, tres ejecutables, Setup independiente, ZIPs, hashes, docs y CI |
+| 1 · Assistant in the current session | CLI, CMD wrapper and PowerShell module; real parent-cwd tests |
+| 2 · Real graphical terminal | `terminal/`, `platform/windows/conpty.py`, bundled xterm |
+| 3 · Modern Python | Python 3.13, Pydantic, PySide6; `pyproject.toml` |
+| 4 · Local AI | `llm/ollama.py`, exact default `qwen3:4b-instruct` |
+| 5 · Rules without AI | `core/intents.py`, unambiguous navigation and queries |
+| 6 · Normal commands | Builtin, PATH, script and alias classification; direct input |
+| 7 · CMD | `assets/shell/chameleon.cmd`, temporary action protocol; no AutoRun |
+| 8 · PowerShell | `Chameleon.psm1`, discovered profiles and marked block |
+| 9 · Administrator | Inherited token, privilege checks; no automatic elevation |
+| 10 · Structured response | `core/schemas.py`, typed actions validated before execution |
+| 11 · System prompt | `llm/prompts.py`, contextual schema and no visible reasoning |
+| 12 · Context | `core/context.py`; bounded, redacted context |
+| 13 · Sessions | `core/sessions.py`; PID + creation time + expiration |
+| 14 · Privacy | Opt-in history and redaction; PRIVACY.md |
+| 15 · Safety Engine | `safety/engine.py`; model-independent SAFE / CONFIRM / BLOCKED |
+| 16 · Ambiguity | `clarify` plan, CLI/GUI selection, safe cancellation |
+| 17 · Visibility | Hidden by default, `--show`, `--dry-run`, confirmation preview |
+| 18 · GUI behavior | Qt bridge, native editor, classification only at a prompt |
+| 19 · Interactive programs | Authenticated OSC marker in child shell; raw REPL/TUI input |
+| 20 · Shell selection | CMD default, Windows PowerShell and PowerShell 7 |
+| 21 · Appearance | Black/green, system typography, compact bar and AI status |
+| 22 · Rendering | xterm 5.5, ANSI, selection, clipboard, scrollback, resize, zoom and F11 |
+| 23 · Latency | Local rules, AI worker, PROCESSING indicator and keep-alive |
+| 24 · Ollama | Setup, official signature, download progress and inference probe |
+| 25 · Offline | Loopback-only inference; VM procedure in VALIDATION.md |
+| 26 · Installer | Self-contained Setup, per-user installation, PATH and shortcuts |
+| 27 · Repair | Payload copy/verification, integration and AI checks |
+| 28 · Uninstall | Ownership manifest; preserves other profile/PATH content; extras require consent |
+| 29 · Settings | General, Local AI, Terminal, Model access and Privacy; validation and atomic save |
+| 30 · Doctor | `setup/doctor.py`, `chameleon doctor` CLI |
+| 31 · Multiple platforms | PlatformAdapter, ShellAdapter, PtyBackend interfaces; Linux reserved |
+| 32 · Repository | `src/chameleon`, `tests`, `scripts`, `installer`, `docs`, `.github` |
+| 33 · Tests | Parsing, quoting, risk, paths, model, sessions and installation |
+| 34 · Real integration | `test_windows_shells.py`, actual CMD / PS 5.1 / PS 7 |
+| 35 · Terminal tests | Real ConPTY and GUI; outstanding manual matrix documented |
+| 36 · Errors | Actionable diagnostics; invalid plans never execute |
+| 37 · Logging | Bounded rotation; prompts/normal output are not saved by default |
+| 38 · Configuration | Per-user TOML, typed values and recovery backup |
+| 39 · Updates | Semantic versioning, Setup Update using the new release payload |
+| 40 · Documentation | README, ARCHITECTURE, BUILDING, INSTALLATION, shell integration, safety and privacy |
+| 41 · Build | `scripts/build.ps1`, pinned dependencies, frozen code/payload verification |
+| 42 · CI | GitHub Actions on Windows; lint, types, tests, build and executable smoke checks |
+| 43 · Quality | Ruff, mypy, separate modules, interfaces and workers |
+| 44 · Temporary files | Random names, private ACL, exclusive writes, expiration and cleanup |
+| 45 · Protocol | ASCII token in an exclusive file; wrapper never interprets model text |
+| 46 · Cancellation | Ctrl+C asyncio cancellation; race test before loop creation |
+| 47 · Missing model | AI OFFLINE; shell and local rules remain available |
+| 48 · User paths | Windows Known Folders and Windows APIs; no fixed username |
+| 49 · Languages | English application UI/messages/docs; English and Spanish requests |
+| 50 · Use cases | Navigation, PDF, confirmation, ambiguity, size search and REPL |
+| 51 · Exclusions | No cloud, API keys, telemetry, side chat, fake shell or required target Python |
+| 52 · Criteria | Build and real component tests; certification limits in VALIDATION.md |
+| 53 · Stages | Research, core, integration, AI, safety, GUI, Setup and distribution |
+| 54 · Review | Lint, types, tests, executables and packaging issue detection/fixes |
+| 55 · Delivery | Source, three executables, standalone Setup, ZIPs, hashes, docs and CI |
 
-Las decisiones técnicas que difieren del ejemplo conceptual —acciones tipadas, helper de consultas y runtime compartido— se explican en ARCHITECTURE.md. Ningún comando de texto del modelo se considera una autorización para ejecutarlo.
+Technical decisions differing from the conceptual example—typed actions, query helpers and shared runtime—are explained in ARCHITECTURE.md. Model-generated command text is never considered permission to execute it.

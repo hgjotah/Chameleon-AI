@@ -38,7 +38,7 @@ class SettingsDialog(QDialog):
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.config = config.model_copy(deep=True)
-        self.setWindowTitle("Chameleon · Ajustes")
+        self.setWindowTitle("Chameleon · Settings")
         self.resize(900, 660)
         self.setMinimumSize(760, 570)
         install_glass(self)
@@ -47,11 +47,11 @@ class SettingsDialog(QDialog):
         layout.setSpacing(20)
         header = QHBoxLayout()
         header.addWidget(BrandMark(size=36))
-        heading = QLabel("Ajustes")
+        heading = QLabel("Settings")
         heading.setObjectName("heading")
         header.addWidget(heading)
         header.addStretch()
-        badge = QLabel("AJUSTES LOCALES")
+        badge = QLabel("LOCAL SETTINGS")
         badge.setObjectName("badge")
         badge.hide()
         layout.addLayout(header)
@@ -153,14 +153,14 @@ class SettingsDialog(QDialog):
 
         general = page("General")
         field(
-            general, "terminal", "shell", "Shell (nuevas sesiones)", ["cmd", "powershell", "pwsh"]
+            general, "terminal", "shell", "Shell (new sessions)", ["cmd", "powershell", "pwsh"]
         )
-        field(general, "terminal", "start_directory", "Directorio inicial")
-        field(general, "general", "language", "Idioma", ["es", "en"])
-        field(general, "general", "startup_checks", "Comprobar al iniciar")
-        ai = page("IA local")
-        ai.addRow("Proveedor", QLabel("Ollama · exclusivamente local"))
-        field(ai, "ai", "model", "Modelo", list(MODELS))
+        field(general, "terminal", "start_directory", "Start directory")
+        field(general, "general", "language", "Language", ["es", "en"])
+        field(general, "general", "startup_checks", "Check on startup")
+        ai = page("Local AI")
+        ai.addRow("Provider", QLabel("Ollama · local only"))
+        field(ai, "ai", "model", "Model", list(MODELS))
         self.model_combo = self.fields["ai", "model"]
         assert isinstance(self.model_combo, QComboBox)
         self.model_combo.setEditable(True)
@@ -171,44 +171,44 @@ class SettingsDialog(QDialog):
             lambda tag: model_note.setText(model_description(tag))
         )
         ai.addRow(model_note)
-        self.prepare_model = MotionButton("Descargar si falta y probar modelo")
+        self.prepare_model = MotionButton("Download if missing and test model")
         self.prepare_model.clicked.connect(self.download_model)
         ai.addRow(self.prepare_model)
-        self.model_progress = QLabel("La selección se aplica al guardar.")
+        self.model_progress = QLabel("The selection applies when you save.")
         self.model_progress.setWordWrap(True)
         self.model_status.connect(self.model_progress.setText)
         self.model_finished.connect(lambda: self.prepare_model.setEnabled(True))
         ai.addRow(self.model_progress)
-        field(ai, "ai", "keep_alive", "Mantener cargado (ej. 5m, 0)")
-        field(ai, "ai", "timeout", "Timeout (segundos)", bounds=(5, 600))
-        field(ai, "ai", "num_threads", "Hilos de CPU", bounds=(1, 64))
-        field(ai, "ai", "enabled", "Activar IA")
-        field(ai, "ai", "prefer_model", "Usar Qwen incluso para acciones simples")
-        field(ai, "ai", "command_only", "Responder sólo con el comando")
+        field(ai, "ai", "keep_alive", "Keep loaded (e.g. 5m, 0)")
+        field(ai, "ai", "timeout", "Timeout (seconds)", bounds=(5, 600))
+        field(ai, "ai", "num_threads", "CPU threads", bounds=(1, 64))
+        field(ai, "ai", "enabled", "Enable AI")
+        field(ai, "ai", "prefer_model", "Use Qwen even for simple actions")
+        field(ai, "ai", "command_only", "Respond with the command only")
         terminal = page("Terminal")
-        field(terminal, "terminal", "font", "Fuente")
-        field(terminal, "terminal", "font_size", "Tamaño", bounds=(8, 40))
+        field(terminal, "terminal", "font", "Font")
+        field(terminal, "terminal", "font_size", "Size", bounds=(8, 40))
         field(terminal, "terminal", "cursor_style", "Cursor", ["block", "bar", "underline"])
-        field(terminal, "terminal", "cursor_blink", "Parpadeo")
+        field(terminal, "terminal", "cursor_blink", "Blink")
         field(terminal, "terminal", "scrollback", "Scrollback", bounds=(100, 100000))
-        field(terminal, "ai", "show_generated_commands", "Mostrar comandos generados")
-        safety = page("Acceso del modelo")
+        field(terminal, "ai", "show_generated_commands", "Show generated commands")
+        safety = page("Model access")
         field(
             safety,
             "safety",
             "mode",
-            "Perfil",
+            "Profile",
             ["read_only", "balanced", "developer", "custom", "full"],
         )
         mode = self.fields["safety", "mode"]
         assert isinstance(mode, QComboBox)
         mode.clear()
         for key, label in (
-            ("read_only", "Solo lectura"),
-            ("balanced", "Equilibrado"),
-            ("developer", "Desarrollador · confirmar"),
-            ("custom", "Personalizado"),
-            ("full", "Acceso total · sin confirmaciones"),
+            ("read_only", "Read only"),
+            ("balanced", "Balanced"),
+            ("developer", "Developer · confirm"),
+            ("custom", "Custom"),
+            ("full", "Full access · no confirmations"),
         ):
             mode.addItem(label, key)
         mode.setCurrentIndex(mode.findData(self.config.safety.mode))
@@ -216,31 +216,31 @@ class SettingsDialog(QDialog):
         self.access_note.setWordWrap(True)
         safety.addRow(self.access_note)
         for key, label in (
-            ("read", "Leer y navegar"),
-            ("write", "Crear, copiar, mover y modificar"),
-            ("delete", "Borrar archivos y carpetas"),
-            ("commands", "Ejecutar comandos"),
-            ("scripts", "Ejecutar scripts e intérpretes"),
-            ("network", "Red y descargas"),
-            ("system", "Cambios de sistema"),
+            ("read", "Read and navigate"),
+            ("write", "Create, copy, move and edit"),
+            ("delete", "Delete files and folders"),
+            ("commands", "Run commands"),
+            ("scripts", "Run scripts and interpreters"),
+            ("network", "Network and downloads"),
+            ("system", "System changes"),
         ):
             field(safety, "safety", "allow_" + key, label)
-        field(safety, "safety", "confirm_changes", "Confirmar antes de ejecutar")
+        field(safety, "safety", "confirm_changes", "Confirm before running")
 
         def access_changed() -> None:
             from chameleon.core.config import SafetyConfig
 
             chosen = mode.currentData()
             self.access_note.setText(
-                "Acceso total elimina los bloqueos y confirmaciones de Chameleon. Windows conserva los permisos de tu usuario."
+                "Full access removes Chameleon's blocks and confirmations. Windows user permissions still apply."
                 if chosen == "full"
-                else "Desarrollador permite cualquier comando/script con confirmación."
+                else "Developer allows any command or script with confirmation."
                 if chosen == "developer"
-                else "Sólo lectura y navegación, sin modificar archivos."
+                else "Read and navigate only, without changing files."
                 if chosen == "read_only"
-                else "Lectura, archivos y comandos habituales. Los cambios piden confirmación."
+                else "Reading, files and common commands. Changes require confirmation."
                 if chosen == "balanced"
-                else "Elige las capacidades. Los scripts requieren todos los permisos de efectos; no es un sandbox de Windows."
+                else "Choose capabilities. Scripts require all effect permissions; this is not a Windows sandbox."
             )
             preset = SafetyConfig(mode=chosen)
             for key, enabled in preset.permissions().items():
@@ -257,24 +257,24 @@ class SettingsDialog(QDialog):
 
         mode.currentIndexChanged.connect(access_changed)
         access_changed()
-        field(safety, "safety", "strict_mode", "Confirmar también consultas AI")
-        privacy = page("Privacidad")
-        field(privacy, "privacy", "save_ai_history", "Guardar historial de IA")
-        privacy.addRow(QLabel("Redacción básica de secretos; no garantiza detectar todos."))
-        clear = MotionButton("Borrar historial local y sesiones")
+        field(safety, "safety", "strict_mode", "Also confirm AI queries")
+        privacy = page("Privacy")
+        field(privacy, "privacy", "save_ai_history", "Save AI history")
+        privacy.addRow(QLabel("Basic secret redaction; detection is not guaranteed."))
+        clear = MotionButton("Clear local history and sessions")
         clear.clicked.connect(self.clear_history)
         privacy.addRow(clear)
-        open_folder = MotionButton("Abrir carpeta de datos")
+        open_folder = MotionButton("Open data folder")
         open_folder.clicked.connect(self.open_data_folder)
         privacy.addRow(open_folder)
         footer = QHBoxLayout()
-        note = QLabel("Los cambios de shell se aplican a nuevas sesiones.")
+        note = QLabel("Shell changes apply to new sessions.")
         note.setObjectName("muted")
         note.setStyleSheet("color:#8ea68e;font-size:11px")
         footer.addWidget(note, 1)
-        cancel = MotionButton("Cancelar")
+        cancel = MotionButton("Cancel")
         cancel.clicked.connect(self.reject)
-        save = MotionButton("Guardar cambios", primary=True)
+        save = MotionButton("Save changes", primary=True)
         save.clicked.connect(self.save)
         save.setDefault(True)
         footer.addWidget(cancel)
@@ -287,7 +287,7 @@ class SettingsDialog(QDialog):
             data_dir().mkdir(parents=True, exist_ok=True)
             os.startfile(data_dir())
         except OSError as exc:
-            QMessageBox.warning(self, "Carpeta de datos", str(exc))
+            QMessageBox.warning(self, "Data folder", str(exc))
 
     def download_model(self) -> None:
         from chameleon.llm.ollama import OllamaProvider
@@ -316,7 +316,7 @@ class SettingsDialog(QDialog):
             try:
                 asyncio.run(prepare())
                 self.model_status.emit(
-                    candidate.model + " · respuesta local verificada. Guarda para usarlo."
+                    candidate.model + " · local response verified. Save to use this model."
                 )
             except Exception as exc:
                 self.model_status.emit(str(exc))
@@ -329,8 +329,8 @@ class SettingsDialog(QDialog):
         if (
             QMessageBox.question(
                 self,
-                "Privacidad",
-                "¿Borrar historial y contexto local?",
+                "Privacy",
+                "Clear local history and context?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -364,12 +364,12 @@ class SettingsDialog(QDialog):
                 and not all(self.config.safety.permissions().values())
             ):
                 raise ValueError(
-                    "Para ejecutar scripts arbitrarios activa todos los permisos, o elige Desarrollador. Sus efectos no se pueden aislar con filtros de comandos."
+                    "To run arbitrary scripts, enable all permissions or choose Developer. Their effects cannot be isolated with command filters."
                 )
             folder = self.config.terminal.start_directory
             if folder and not Path(folder).expanduser().is_dir():
                 raise ValueError(
-                    "El directorio inicial debe ser una carpeta existente. Déjalo vacío para usar tu carpeta de usuario."
+                    "The start directory must be an existing folder. Leave it empty to use your home folder."
                 )
             from chameleon.platform.windows.system import shell_executable
 
@@ -377,4 +377,4 @@ class SettingsDialog(QDialog):
             save_config(self.config)
             self.accept()
         except (ValueError, OSError) as exc:
-            QMessageBox.warning(self, "Configuración inválida", str(exc))
+            QMessageBox.warning(self, "Invalid configuration", str(exc))
