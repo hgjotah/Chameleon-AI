@@ -498,7 +498,7 @@ class TerminalWindow(QMainWindow):
         )
         examples.setObjectName("path")
         layout.addWidget(examples, 1)
-        close = MotionButton("Entendido", primary=True)
+        close = MotionButton("Got it", primary=True)
         close.clicked.connect(dialog.accept)
         layout.addWidget(close)
         dialog.exec()
